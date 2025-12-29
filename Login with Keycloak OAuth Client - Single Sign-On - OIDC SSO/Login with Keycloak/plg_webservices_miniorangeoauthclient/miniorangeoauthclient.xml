@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.0" type="plugin" group="webservices" method="upgrade">
+	<name>PLG_WEBSERVICES_MINIORANGEOAUTHCLIENT</name>
+	<author>miniOrange Security Software Pvt. Ltd.</author>
+    <authorEmail>info@xecurify.com</authorEmail>
+    <authorUrl>https://www.miniorange.com/</authorUrl>
+    <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
+    <license>GNU General Public License version 3; see LICENSE.txt</license>
+	<creationDate>Jan 2018</creationDate>
+	<version>1.1.6</version>
+	<description>PLG_WEBSERVICES_MINIORANGEOAUTHCLIENT_XML_DESCRIPTION</description>
+	<files>
+		<filename plugin="miniorangeoauthclient">miniorangeoauthclient.php</filename>
+		 <filename>index.html</filename>
+	</files>
+	
+	<languages folder="language">
+		<language tag="en-GB">en-GB/en-GB.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="en-GB">en-GB/en-GB.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="fr-FR">fr-FR/fr-FR.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="fr-FR">fr-FR/fr-FR.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="it-IT">it-IT/it-IT.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="it-IT">it-IT/it-IT.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="nl-NL">nl-NL/nl-NL.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="nl-NL">nl-NL/nl-NL.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="de-DE">de-DE/de-DE.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="de-DE">de-DE/de-DE.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="es-ES">es-ES/es-ES.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="es-ES">es-ES/es-ES.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="zh-CN">zh-CN/zh-CN.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="zh-CN">zh-CN/zh-CN.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="cs-CZ">cs-CZ/cs-CZ.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="cs-CZ">cs-CZ/cs-CZ.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="da-DK">da-DK/da-DK.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="da-DK">da-DK/da-DK.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="el-GR">el-GR/el-GR.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="el-GR">el-GR/el-GR.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="hu-HU">hu-HU/hu-HU.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="hu-HU">hu-HU/hu-HU.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="ja-JP">ja-JP/ja-JP.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="ja-JP">ja-JP/ja-JP.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="pt-BR">pt-BR/pt-BR.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="pt-BR">pt-BR/pt-BR.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="sv-SE">sv-SE/sv-SE.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="sv-SE">sv-SE/sv-SE.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="sr-YU">sr-YU/sr-YU.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="sr-YU">sr-YU/sr-YU.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="th-TH">th-TH/th-TH.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="th-TH">th-TH/th-TH.plg_webservices_miniorangeoauthclient.sys.ini</language>
+        <language tag="sr-RS">sr-RS/sr-RS.plg_webservices_miniorangeoauthclient.ini</language>
+        <language tag="sr-RS">sr-RS/sr-RS.plg_webservices_miniorangeoauthclient.sys.ini</language>
+	</languages>
+    <webservices>
+        <service version="v1" scope="administrator">
+            <resource>miniorangeoauth</resource>
+        </service>
+    </webservices>
+	<scriptfile>my_script.php</scriptfile>
+</extension>
