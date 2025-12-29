@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.0" type="package" method="upgrade">
+	<name>Package - miniOrange OAuth Client</name>
+	<packagename>oauthclient</packagename>
+	<author>miniOrange Security Software Pvt. Ltd.</author>
+    <authorEmail>info@xecurify.com</authorEmail>
+    <authorUrl>https://www.miniorange.com/</authorUrl>
+    <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
+    <license>GNU General Public License version 3; see LICENSE.txt</license>
+	<version>3.1.3</version>
+	<creationDate>Jan 2018</creationDate>
+	<description>miniOrange OAuth Client Plugin Installed Successfully!</description>
+	<scriptfile>pkg_script.php</scriptfile>
+	<files>
+		<file type="plugin" id="miniorangeoauth" group="system">plg_system_miniorangeoauth.zip</file>
+        <file type="plugin" id="miniorangeoauthclient" group="webservices">plg_webservices_miniorangeoauthclient.zip</file>
+		<file type="component" id="miniorange_oauth" >com_miniorange_oauth.zip</file>
+        <file type="library" id="miniorangeoauthplugin">lib_miniorangeoauthplugin.zip</file>
+	</files>
+	<languages folder="language">
+		<language tag="en-GB">en-GB/en-GB.pkg_miniorangeoauth.ini</language>
+		<language tag="en-GB">en-GB/en-GB.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="de-DE">de-DE/de-DE.pkg_miniorangeoauth.ini</language>
+		<language tag="de-DE">de-DE/de-DE.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="es-ES">es-ES/es-ES.pkg_miniorangeoauth.ini</language>
+		<language tag="es-ES">es-ES/es-ES.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="ja-JP">ja-JP/ja-JP.pkg_miniorangeoauth.ini</language>
+		<language tag="ja-JP">ja-JP/ja-JP.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="ru-RU">ru-RU/ru-RU.pkg_miniorangeoauth.ini</language>
+		<language tag="ru-RU">ru-RU/ru-RU.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="fr-FR">fr-FR/fr-FR.pkg_miniorangeoauth.ini</language>
+		<language tag="fr-FR">fr-FR/fr-FR.pkg_miniorangeoauth.sys.ini</language>
+		<language tag="it-IT">it-IT/it-IT.pkg_miniorangeoauth.ini</language>
+		<language tag="it-IT">it-IT/it-IT.pkg_miniorangeoauth.sys.ini</language>
+	</languages>
+	<updateservers>
+		<server type="extension" priority="1" name="oauthclient">https://prod-marketing-site.s3.amazonaws.com/plugins/joomla/joomla_oauth_client_update.xml</server>
+	</updateservers>
+</extension>
