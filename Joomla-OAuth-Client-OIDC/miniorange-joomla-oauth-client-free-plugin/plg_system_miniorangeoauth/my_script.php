@@ -1,4 +1,5 @@
 <?php
+
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\Factory;
@@ -18,8 +19,8 @@ use Joomla\CMS\Language\Text;
  * manifest file as follows:
  * <scriptfile>script.php</scriptfile>
  *
- 
- * 
+
+ *
  * Script file of miniorange_oauth_plugin.
  *
  * @author    miniOrange Security Software Pvt. Ltd.
@@ -28,89 +29,91 @@ use Joomla\CMS\Language\Text;
  * @contact   info@xecurify.com
  */
 
-class plgSystemMiniorangeoauthInstallerScript
+class PlgSystemMiniorangeoauthInstallerScript
 {
-    /**
-     * This method is called after a component is installed.
-     *
-     * @param \stdClass $parent - Parent object calling this method.
-     *
-     * @return void
-     */
-    public function install($parent) 
-    {
-        $app = Factory::getApplication();
+	/**
+	 * This method is called after a component is installed.
+	 *
+	 * @param \stdClass $parent - Parent object calling this method.
+	 *
+	 * @return void
+	 */
+	public function install($parent)
+	{
+		$app = Factory::getApplication();
 
-        if (method_exists($app, 'getDatabase')) {
-            $db =  $app->getDatabase();
-        }
-        else{
-            $db = Factory::getDbo();
-        }
-        
-        $query = $db->getQuery(true);
-        $query->update('#__extensions');
-        $query->set($db->quoteName('enabled') . ' = 1');
-        $query->where($db->quoteName('element') . ' = ' . $db->quote('miniorangeoauth'));
-        $query->where($db->quoteName('type') . ' = ' . $db->quote('plugin'));
-        $db->setQuery($query);
-        $db->execute();
-    }
+		if (method_exists($app, 'getDatabase'))
+		{
+			$db = $app->getDatabase();
+		}
+		else
+		{
+			$db = Factory::getDbo();
+		}
 
-    /**
-     * This method is called after a component is uninstalled.
-     *
-     * @param \stdClass $parent - Parent object calling this method.
-     *
-     * @return void
-     */
-    public function uninstall($parent) 
-    {
-        //echo '<p>' . Text::_('COM_HELLOWORLD_UNINSTALL_TEXT') . '</p>';
-    }
+		$query = $db->getQuery(true);
+		$query->update('#__extensions');
+		$query->set($db->quoteName('enabled') . ' = 1');
+		$query->where($db->quoteName('element') . ' = ' . $db->quote('miniorangeoauth'));
+		$query->where($db->quoteName('type') . ' = ' . $db->quote('plugin'));
+		$db->setQuery($query);
+		$db->execute();
+	}
 
-    /**
-     * This method is called after a component is updated.
-     *
-     * @param \stdClass $parent - Parent object calling object.
-     *
-     * @return void
-     */
-    public function update($parent) 
-    {
-        //echo '<p>' . Text::sprintf('COM_HELLOWORLD_UPDATE_TEXT', $parent->get('manifest')->version) . '</p>';
-    }
+	/**
+	 * This method is called after a component is uninstalled.
+	 *
+	 * @param \stdClass $parent - Parent object calling this method.
+	 *
+	 * @return void
+	 */
+	public function uninstall($parent)
+	{
+		// Echo '<p>' . Text::_('COM_HELLOWORLD_UNINSTALL_TEXT') . '</p>';
+	}
 
-    /**
-     * Runs just before any installation action is performed on the component.
-     * Verifications and pre-requisites should run in this function.
-     *
-     * @param string    $type   - Type of PreFlight action. Possible values are:
-     *                          - * install
-     *                          - * update
-     *                          - * discover_install
-     * @param \stdClass $parent - Parent object calling object.
-     *
-     * @return void
-     */
-    public function preflight($type, $parent) 
-    {
-        //echo '<p>' . Text::_('COM_HELLOWORLD_PREFLIGHT_' . $type . '_TEXT') . '</p>';
-    }
+	/**
+	 * This method is called after a component is updated.
+	 *
+	 * @param \stdClass $parent - Parent object calling object.
+	 *
+	 * @return void
+	 */
+	public function update($parent)
+	{
+		// Echo '<p>' . Text::sprintf('COM_HELLOWORLD_UPDATE_TEXT', $parent->get('manifest')->version) . '</p>';
+	}
 
-    /**
-     * Runs right after any installation action is performed on the component.
-     *
-     * @param string    $type   - Type of PostFlight action. Possible values are:
-     *                          - * install
-     *                          - * update
-     *                          - * discover_install
-     * @param \stdClass $parent - Parent object calling object.
-     *
-     * @return void
-     */
-    function postflight($type, $parent) 
-    {
-        //echo '<p>' . Text::_('COM_HELLOWORLD_POSTFLIGHT_' . $type . '_TEXT') . '</p>';
-    }
+	/**
+	 * Runs just before any installation action is performed on the component.
+	 * Verifications and pre-requisites should run in this function.
+	 *
+	 * @param string    $type   - Type of PreFlight action. Possible values are:
+	 *                          - * install
+	 *                          - * update
+	 *                          - * discover_install
+	 * @param \stdClass $parent - Parent object calling object.
+	 *
+	 * @return void
+	 */
+	public function preflight($type, $parent)
+	{
+		// Echo '<p>' . Text::_('COM_HELLOWORLD_PREFLIGHT_' . $type . '_TEXT') . '</p>';
+	}
+
+	/**
+	 * Runs right after any installation action is performed on the component.
+	 *
+	 * @param string    $type   - Type of PostFlight action. Possible values are:
+	 *                          - * install
+	 *                          - * update
+	 *                          - * discover_install
+	 * @param \stdClass $parent - Parent object calling object.
+	 *
+	 * @return void
+	 */
+	public function postflight($type, $parent)
+	{
+		// Echo '<p>' . Text::_('COM_HELLOWORLD_POSTFLIGHT_' . $type . '_TEXT') . '</p>';
+	}
 }

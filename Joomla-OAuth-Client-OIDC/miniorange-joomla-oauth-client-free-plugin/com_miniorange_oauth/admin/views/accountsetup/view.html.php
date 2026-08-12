@@ -21,37 +21,41 @@ HTMLHelper::_('jquery.framework');
  *
  * @since 0.0.1
  */
-class miniorangeoauthViewAccountSetup extends HtmlView
+class MiniorangeoauthViewAccountSetup extends HtmlView
 {
-    function display($tpl = null)
-    {
-        // Get data from the model
-        $this->lists        = $this->get('List');
-        //$this->pagination = $this->get('Pagination');
+	public function display($tpl = null)
+	{
+		// Get data from the model
+		$this->lists        = $this->get('List');
 
-        // Check for errors.
-        if (count($errors = $this->get('Errors'))) {
-            Factory::getApplication()->enqueueMessage(500, implode('<br />', $errors));
+		// $this->pagination = $this->get('Pagination');
 
-            return false;
-        }
-        $this->setLayout('accountsetup');
-        // Set the toolbar
-        $this->addToolBar();
+		// Check for errors.
+		if (count($errors = $this->get('Errors')))
+		{
+			Factory::getApplication()->enqueueMessage(500, implode('<br />', $errors));
 
-        // Display the template
-        parent::display($tpl);
-    }
+			return false;
+		}
 
-    /**
-     * Add the page title and toolbar.
-     *
-     * @return void
-     *
-     * @since 1.6
-     */
-    protected function addToolBar()
-    {
-        ToolBarHelper::title(Text::_('COM_MINIORANGE_OAUTH_PLUGIN_TITLE'), 'mo_oauth_logo mo_oauth_icon');
-    }
+		$this->setLayout('accountsetup');
+
+		// Set the toolbar
+		$this->addToolBar();
+
+		// Display the template
+		parent::display($tpl);
+	}
+
+	/**
+	 * Add the page title and toolbar.
+	 *
+	 * @return void
+	 *
+	 * @since 1.6
+	 */
+	protected function addToolBar()
+	{
+		ToolBarHelper::title(Text::_('COM_MINIORANGE_OAUTH_PLUGIN_TITLE'), 'mo_oauth_logo mo_oauth_icon');
+	}
 }

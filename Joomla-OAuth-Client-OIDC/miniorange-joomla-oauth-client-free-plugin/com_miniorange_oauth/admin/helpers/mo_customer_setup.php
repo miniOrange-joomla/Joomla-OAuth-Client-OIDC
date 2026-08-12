@@ -18,439 +18,539 @@ require_once JPATH_ADMINISTRATOR . '/components/com_miniorange_oauth/helpers/mo_
 
 class MoOauthCustomer
 {
-    
-    public $email;
-    public $phone;
-    public $customerKey;
-    public $transactionId;
-    
-    function request_for_demo($email, $plan, $description,$demo_trail=null,$callDate=null,$timeZone=null)
-    { 
-        $customerKey = "16555";
-        $fromEmail = $email;
-        $app = Factory::getApplication();
+	/**
+	 * Customer email address.
+	 *
+	 * @var    string
+	 */
+	public $email;
 
-        if (method_exists($app, 'getIdentity')) {
-            $user = $app->getIdentity();     // Joomla 4+
-        } else {
-            $user = Factory::getUser();      // Joomla 3
-        }
-        
-        $adminEmail = $user->email;
-        $jVersion = new Version();
-        $phpVersion = phpversion();
-        $moSystemOS = MoOauthUtility::get_operating_system();
-        $jCmsVersion = $jVersion->getShortVersion();
-        $moPluginVersion = MoOauthUtility::GetPluginVersion();
-        $timezone = self::getUserTimezone();
+	/**
+	 * Customer phone number.
+	 *
+	 * @var    string
+	 */
+	public $phone;
 
-        $content='<div>Hello, <br><br><strong>Company</strong> :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br><strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br><b>Email :</b><a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br><b>Plugin Name: </b>'.$plan. '<br><br><b>Description: </b>' .$description;
+	/**
+	 * Customer key identifier.
+	 *
+	 * @var    string
+	 */
+	public $customerKey;
 
-        if(is_null($callDate) && is_null($timeZone)) {
-            $content='<div>Hello, <br><br>Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br><strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br><b>Email :</b><a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br><b>Plugin Name: </b>'.$plan. '<br><br><b>Description: </b>' .$description;
-            $subject  = "miniOrange Joomla Oauth Client Request for ".$demo_trail. " ";
-        }
-        else
-        {
-            $subject  = "miniOrange Joomla Oauth Client Free - Screen Share/Call Request";
-            $content='<div>Hello, <br><br><strong>Company</strong> :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br><strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br><b>Email :</b><a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br><b>Time Zone:</b> '.$timeZone. '<br><br><b>Date to set up call: </b>' .$callDate. '<br><br><b>Issue :</b> ' .$plan. '<br><br><b>Description: </b>'.$description;
-        }
+	/**
+	 * Transaction identifier.
+	 *
+	 * @var    string
+	 */
+	public $transactionId;
 
-        $content .= '<br><br><b>System Information: </b>Joomla:'. $jCmsVersion .' | PHP: '. $phpVersion .' | Plugin: '. $moPluginVersion .' | OS: '.$moSystemOS.' | Time Zone: '.$timezone.'<br></div>';
+	public function requestForDemo($email, $plan, $description, $demoTrail = null, $callDate = null, $timeZone = null)
+	{
+		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
+		$fromEmail = $email;
+		$app = Factory::getApplication();
 
-        
-        $fields = array(
-            'customerKey'    => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'   => $customerKey,
-                'fromEmail'     => $fromEmail,                
-                'fromName'      => 'miniOrange',
-                'toEmail'       => 'joomlasupport@xecurify.com',
-                'toName'        => 'joomlasupport@xecurify.com',
-                'subject'       => $subject,
-                'content'       => $content
-            ),
-        );
-        
-        return self::send_email($fields);
-    }
-    
-    public static function submit_feedback_form($email,$phone,$query)
-    {
-        $customerKey = "16555";
-        $fromEmail   = $email;
-        $app = Factory::getApplication();
+		if (method_exists($app, 'getIdentity'))
+		{
+			// Joomla 4+
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			// Joomla 3
+			$user = Factory::getUser();
+		}
 
-        if (method_exists($app, 'getIdentity')) {
-            $user = $app->getIdentity();     // Joomla 4+
-        } else {
-            $user = Factory::getUser();      // Joomla 3
-        }
+		$adminEmail = $user->email;
+		$jVersion = new Version;
+		$phpVersion = phpversion();
+		$moSystemOS = MoOauthUtility::getOperatingSystem();
+		$jCmsVersion = $jVersion->getShortVersion();
+		$moPluginVersion = MoOauthUtility::getPluginVersion();
+		$timezone = self::getUserTimezone();
 
-        $adminEmail         = $user->email;
-        $jVersion           = new Version();
-        $phpVersion         = phpversion();
-        $jCmsVersion        = $jVersion->getShortVersion();
-        $osName = php_uname('s');      
-        $osRelease = php_uname('r');
-        $osArch = php_uname('m'); 
-        $timezone = self::getUserTimezone();
-        if(class_exists("MoOAuthUtility")) {
-            $moPluginVersion     = MoOauthUtility::GetPluginVersion();
-        } else {
-            $moPluginVersion = "NA";
-        }
-        $server_name = self::getServerType();
-        $subject = "Feedback for miniOrange Joomla Oauth Client Free";
+		$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
 
-        $query1 =" miniOrange Joomla [Free] Oauth Client";
-        $content='<div> Hello, <br><br>
-                    <strong>Company</strong> :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
-                    <strong>Phone Number</strong> :'.$phone.'<br><br>
-                    <strong>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></strong><br><br>
-                    <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
-                    <b>Plugin Deactivated: </b>'.$query1. '<br><br>
-                    <b>Reason: </b> ' .$query. '<br><br>
-                    <b>System Information: Joomla: </b>'.$jCmsVersion.' | PHP: '.$phpVersion.' | Plugin: '.$moPluginVersion.' | OS: '.$osName.' '.$osRelease.' '.$osArch.' | Time Zone: '.$timezone.'<br>
-                    <b>Server Name: </b>'. $server_name .'</div>';
+		if (is_null($callDate) && is_null($timeZone))
+		{
+			$content = '<div>Hello, <br><br>Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
+			$subject  = "Joomla OAuth Client Request for " . $demoTrail . " - " . $fromEmail;
+		}
+		else
+		{
+			$subject  = "Joomla OAuth Client Request for Screen Share/Call - " . $fromEmail;
+			$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Time Zone:</b> ' . $timeZone . '<br><br><b>Date to set up call: </b>' . $callDate . '<br><br><b>Issue :</b> ' . $plan . '<br><br><b>Description: </b>' . $description;
+		}
 
-        $fields = array(
-            'customerKey'   => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'   => $customerKey,
-                'fromEmail'     => $fromEmail,                
-                'fromName'      => 'miniOrange',
-                'toEmail'       => 'joomlasupport@xecurify.com',
-                'toName'        => 'joomlasupport@xecurify.com',
-                'subject'       => $subject,
-                'content'       => $content
-            ),
-        );
+		$content .= '<br><br><b>System Information: </b>Joomla:' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $moSystemOS . ' | Time Zone: ' . $timezone . '<br></div>';
 
-        return self::send_email($fields);
-    }
+		$fields = array(
+			'customerKey'    => $customerKey,
+			'sendEmail'     => true,
+			'email'         => array(
+				'customerKey'   => $customerKey,
+				'fromEmail'     => $fromEmail,
+				'fromName'      => 'miniOrange',
+				'toEmail'       => 'joomlasupport@xecurify.com',
+				'toName'        => 'joomlasupport@xecurify.com',
+				'subject'       => $subject,
+				'content'       => $content
+			),
+		);
 
-    public static function getAccountDetails()
-    {
-        $db = self::getDBObject();
+		return self::sendEmail($fields);
+	}
 
-        $query = $db->getQuery(true);
-        $query->select('*');
-        $query->from($db->quoteName('#__miniorange_oauth_customer'));
-        $query->where($db->quoteName('id')." = 1");
+	public static function submitFeedbackForm($email, $phone, $query)
+	{
+		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
+		$fromEmail   = $email;
+		$app = Factory::getApplication();
 
-        $db->setQuery($query);
-        $result=$db->loadAssoc();
-        return $result;
-    }
+		if (method_exists($app, 'getIdentity'))
+		{
+			// Joomla 4+
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			// Joomla 3
+			$user = Factory::getUser();
+		}
 
-    private static function getDBObject()
-    {
-        $app = Factory::getApplication();
+		$adminEmail         = $user->email;
+		$jVersion           = new Version;
+		$phpVersion         = phpversion();
+		$jCmsVersion        = $jVersion->getShortVersion();
+		$osName = php_uname('s');
+		$osRelease = php_uname('r');
+		$osArch = php_uname('m');
+		$timezone = self::getUserTimezone();
 
-        if (method_exists($app, 'getDatabase')) {
-            return $app->getDatabase();
-        }
-        return Factory::getDbo();
-    }
-    
-    public static function getConfigurationDetails()
-    {
-        $db = self::getDBObject();
+		if (class_exists("MoOAuthUtility"))
+		{
+			$moPluginVersion     = MoOauthUtility::getPluginVersion();
+		}
+		else
+		{
+			$moPluginVersion = "NA";
+		}
 
-        $query = $db->getQuery(true);
-        $query->select('*');
-        $query->from($db->quoteName('#__miniorange_oauth_config'));
-        $query->where($db->quoteName('id')." = 1");
+		$serverName = self::getServerType();
+		$subject = "Joomla OAuth Client Free Feedback - " . $fromEmail;
 
-        $db->setQuery($query);
-        $result=$db->loadAssoc();
-        return $result;
-    }
-    
-    //Efficency check of the plugin for better improvement
-    public static function plugin_efficiency_check($email,$appname,$base_url, $c_time, $dno_ssos, $tno_ssos, $previous_update, $present_update,$reason='NA', $scope='NULL', $authorisationURL='NULL', $accesstokenurl='NULL', $resourceownerdetailsurl='NULL', $in_header_or_body='NULL', $test_configuration="")
-    {
-        $customer_details = self::getAccountDetails();
-        $config_details = self::getConfigurationDetails();
+		$query1 = " miniOrange Joomla [Free] Oauth Client";
+		$content = '<div> Hello, <br><br>
+                    <strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
+                    <strong>Phone Number</strong> :' . $phone . '<br><br>
+                    <strong>Email :<a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></strong><br><br>
+                    <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
+                    <b>Plugin Deactivated: </b>' . $query1 . '<br><br>
+                    <b>Reason: </b> ' . $query . '<br><br>
+                    <b>System Information: Joomla: </b>' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Time Zone: ' . $timezone . '<br>
+                    <b>Server Name: </b>' . $serverName . '</div>';
 
-        $customerKey          = "16555";
-        $fromEmail            = $email;
-        $app = Factory::getApplication();
+		$fields = array(
+			'customerKey'   => $customerKey,
+			'sendEmail'     => true,
+			'email'         => array(
+				'customerKey'   => $customerKey,
+				'fromEmail'     => $fromEmail,
+				'fromName'      => 'miniOrange',
+				'toEmail'       => 'joomlasupport@xecurify.com',
+				'toName'        => 'joomlasupport@xecurify.com',
+				'subject'       => $subject,
+				'content'       => $content
+			),
+		);
 
-        if (method_exists($app, 'getIdentity')) {
-            $user = $app->getIdentity();     // Joomla 4+
-        } else {
-            $user = Factory::getUser();      // Joomla 3
-        }
-        $adminEmail           = $user->email;
-        $subject              = "miniOrange Joomla OAuth Client [Free] for Efficiency";
-        $sso_test = base64_decode($customer_details['sso_test']);
-        $sso_var = base64_decode($customer_details['sso_var']);
-        $base_url = Uri::root();
-        $appname = empty($appname) && isset($config_details['appname']) ? $config_details['appname'] : $appname;
-        $scope = ($scope == 'NULL') && isset($config_details['app_scope']) ? $config_details['app_scope'] : $scope;
-        $authorisationURL = ($authorisationURL == 'NULL') && isset($config_details['authorize_endpoint']) ? $config_details['authorize_endpoint'] : $authorisationURL;
-        $accesstokenurl  = ($accesstokenurl == 'NULL') && isset($config_details['access_token_endpoint']) ? $config_details['access_token_endpoint'] : $accesstokenurl;
-        $resourceownerdetailsurl  = ($resourceownerdetailsurl == 'NULL') && isset($config_details['user_info_endpoint']) ? $config_details['user_info_endpoint'] : $resourceownerdetailsurl;
-        $server_name = self::getServerType();
-        $timezone = self::getUserTimezone();
-        
-        $query1 ="miniOrange Joomla [Free] OAuth Client to improve efficiency ";
-        $content='<div >Hello, <br><br>
-            Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
-            Server :'.$appname.'<br><br>
-            <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
-            <b>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></b><br><br>
-            <b>Plugin Efficency Check: '.$query1. '</b><br><br>
-            <b>Website: ' .$base_url. '</b><br><br>
-            <b>Time Zone: '.$timezone.'</b><br><br>
-            <b>Server Name:'.$server_name.'</b><br><br>
-            Creation Date:'.$c_time.'<br> 
-            Daily SSO:'.$dno_ssos.'<br>
-            Total SSO:'.$tno_ssos.'<br>
-            Login Count:'. $sso_test .'<br>
-            Login Limit:'. $sso_var .'<br>
-            Previous Update:'.$previous_update.'<br> 
-            Current Update:'.$present_update.'<br> 
-            Scope: '.$scope.'<br>  
-            Authorize Endpoint:'.$authorisationURL.'<br> 
-            Token Endpoint: '.$accesstokenurl.'<br> 
-            Userinfo Endpoint: '.$resourceownerdetailsurl.' <br> 
-            Header/Body: '.$in_header_or_body.'<br> 
-            Test Configuration: '. $test_configuration .' <br> 
-            Message:'.$reason.'</div>';
+		return self::sendEmail($fields);
+	}
 
-        $fields = array(
-            'customerKey'    => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'   => $customerKey,
-                'fromEmail'     => $fromEmail,                
-                'fromName'      => 'miniOrange',
-                'bccEmail'      => 'nikhil.bhot@xecurify.com',
-                'toEmail'       => 'nutan.barad@xecurify.com',
-                'toName'        => 'nutan.barad@xecurify.com',
-                'subject'       => $subject,
-                'content'       => $content
-            ),
-        );
+	public static function getAccountDetails()
+	{
+		$db = self::getDBObject();
 
-        self::send_email($fields);
-    }
+		$query = $db->getQuery(true);
+		$query->select('*');
+		$query->from($db->quoteName('#__miniorange_oauth_customer'));
+		$query->where($db->quoteName('id') . " = 1");
 
-    public static function send_installation_email()
-    {
-        $customerKey          = "16555";
-        $app = Factory::getApplication();
+		$db->setQuery($query);
+		$result = $db->loadAssoc();
 
-        if (method_exists($app, 'getIdentity')) {
-            $user = $app->getIdentity();     // Joomla 4+
-        } else {
-            $user = Factory::getUser();      // Joomla 3
-        }
-        $adminEmail           = $user->email;
-        $jVersion             = new Version();
-        $phpVersion         = phpversion();
-        $jCmsVersion         = $jVersion->getShortVersion();
-        $osName = php_uname('s');      
-        $osRelease = php_uname('r');
-        $osArch = php_uname('m'); 
-        $timezone = self::getUserTimezone();
-        if(class_exists("MoOAuthUtility")) {
-            $moPluginVersion = MoOauthUtility::GetPluginVersion();
-        } else {
-            $moPluginVersion = "NA";
-        }
-        $server_name = self::getServerType();
+		return $result;
+	}
 
-        $subject  = "Installation of Joomla OAuth Client [Free]";
+	private static function getDBObject()
+	{
+		$app = Factory::getApplication();
 
-        $content='<div >Hello, <br><br>
-            Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
-            <strong>Admin Email : </strong><a href="mailto:'. $adminEmail .'" target="_blank">'. $adminEmail .'</a><br><br>
-            <b>System Information: </b>Joomla:'. $jCmsVersion .' | PHP: '. $phpVersion .' | Plugin: '. $moPluginVersion .' | OS: '.$osName.' '.$osRelease.' '.$osArch.' | Time Zone: '.$timezone.'<br>
-            <b>Server Name: </b>'. $server_name .'</div>';
+		if (method_exists($app, 'getDatabase'))
+		{
+			return $app->getDatabase();
+		}
 
-        $fields = array(
-            'customerKey'   => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'   => $customerKey,
-                'fromEmail'     => $adminEmail,                
-                'fromName'      => 'miniOrange',
-                'toEmail'       => 'nutan.barad@xecurify.com',
-                'bccEmail'      => 'nikhil.bhot@xecurify.com',
-                'toName'        => 'nutan.barad@xecurify.com',
-                'subject'       => $subject,
-                'content'       => $content
-            ),
-        );
+		return Factory::getDbo();
+	}
 
-        self::send_email($fields);
-    }
+	public static function getConfigurationDetails()
+	{
+		$db = self::getDBObject();
 
-    function submit_contact_us( $q_email, $q_phone, $query, $attributes )
-    {
-        if(!MoOauthUtility::is_curl_installed()) {
-            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-        }
+		$query = $db->getQuery(true);
+		$query->select('*');
+		$query->from($db->quoteName('#__miniorange_oauth_config'));
+		$query->where($db->quoteName('id') . " = 1");
 
-        $customerKey = "16555";
-        $fromEmail    = $q_email;
-        $app = Factory::getApplication();
+		$db->setQuery($query);
+		$result = $db->loadAssoc();
 
-        if (method_exists($app, 'getIdentity')) {
-            $user = $app->getIdentity();     // Joomla 4+
-        } else {
-            $user = Factory::getUser();      // Joomla 3
-        }
-        $adminEmail         = $user->email;
-        $jVersion             = new Version();
-        $phpVersion         = phpversion();
-        $moSystemOS         = MoOauthUtility::get_operating_system();
-        $jCmsVersion         = $jVersion->getShortVersion();
-        $moPluginVersion     = MoOauthUtility::GetPluginVersion();
-        $server_name = self::getServerType();
-        $timezone = self::getUserTimezone();
-        $query = '[miniOrange Joomla Oauth Client Free | '.$phpVersion. ' | '.$jCmsVersion.' | '.$moPluginVersion.' | ' . $moSystemOS. ' | '.$timezone.'] <br> ' . $query;
-        $query = $query.'<br><strong>Configuration: </strong><br> <strong>App Name:</strong>  '.$attributes['appname'].'<br> <strong>Custom App: </strong> '. $attributes['custom_app'].' <br> <strong>App Scope: </strong>'.$attributes['app_scope'].'<br> <strong>Authorize Endpoint: </strong>'.$attributes['authorize_endpoint'];
-        $subject = "Query for miniOrange Joomla Oauth Client Free  - ".$fromEmail;
-        $content='<div>Hello, <br><br>
-            <strong>Company: </strong> <a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
-            <strong>Phone Number: </strong>'.$q_phone.'<br><br>
-            <strong>Admin Email: </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
-            <b>Email: <a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></b><br>
-            <b>Server Name: </b>'  . $server_name. '<br>
-            <b>Query: </b>'.$query. '</div>';
-    
-        $fields = array(
-            'customerKey'    => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'     => $customerKey,
-                'fromEmail'     => $fromEmail,                
-                'fromName'      => 'miniOrange',
-                'toEmail'       => 'joomlasupport@xecurify.com',
-                'toName'        => 'joomlasupport@xecurify.com',
-                'subject'         => $subject,
-                'content'         => $content
-            ),
-        );
-        
-        return self::send_email($fields);
-    }
-    private static function send_email($fields)
-    {
-        $field_string = json_encode($fields);
+		return $result;
+	}
 
-        if(!MoOauthUtility::is_curl_installed()) {
-            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-        }
-        
-        $hostname = MoOauthUtility::getHostname();
-        $url = $hostname . '/moas/api/notify/send';
-        $ch = curl_init($url);
+	// Efficency check of the plugin for better improvement
+	public static function pluginEfficiencyCheck($email, $appname, $baseUrl, $cTime, $dnoSsos, $tnoSsos, $previousUpdate, $presentUpdate, $reason = 'NA', $scope = 'NULL', $authorisationURL = 'NULL', $accesstokenurl = 'NULL', $resourceownerdetailsurl = 'NULL', $inHeaderOrBody = 'NULL', $testConfiguration = "")
+	{
+		$customerDetails = self::getAccountDetails();
+		$configDetails = self::getConfigurationDetails();
 
-        $customerKey = "16555";
-        $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-        $currentTimeInMillis= round(microtime(true) * 1000);
-        $stringToHash         = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-        $hashValue             = hash("sha512", $stringToHash);
-        $customerKeyHeader     = "Customer-Key: " . $customerKey;
-        $timestampHeader     = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
-        $authorizationHeader= "Authorization: " . $hashValue;
+		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
+		$fromEmail = $email;
+		$app = Factory::getApplication();
 
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_ENCODING, "");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  
+		if (method_exists($app, 'getIdentity'))
+		{
+			// Joomla 4+
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			// Joomla 3
+			$user = Factory::getUser();
+		}
 
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt(
-            $ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
-            $timestampHeader, $authorizationHeader)
-        );
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $field_string);
-        $proxy_server =  self::getConfigurationDetails();
-        $proxy_host_name = isset($proxy_server['proxy_host_name']) ? $proxy_server['proxy_host_name'] : '';
-        $port_number = isset($proxy_server['port_number']) ? $proxy_server['port_number'] : '';
-        $username = isset($proxy_server['username']) ? $proxy_server['username'] : '';
-        $password = isset($proxy_server['password']) ? base64_decode($proxy_server['password']) : '';
-        if (!empty($proxy_host_name)) {
-            curl_setopt($ch, CURLOPT_PROXY, $proxy_host_name);
-            curl_setopt($ch, CURLOPT_PROXYPORT, $port_number);
-            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-            curl_setopt($ch, CURLOPT_PROXYUSERPWD, $username . ':' . $password);
-        }
-        $content = curl_exec($ch);
-        if (curl_errno($ch)) {
-            curl_close($ch);
-            return json_encode(array("status"=>'Error','message'=>'Request Error: ' . curl_error($ch)));
-        }
-        curl_close($ch);
+		$adminEmail = $user !== null && isset($user->email) ? $user->email : $email;
+		$subject = "miniOrange Joomla OAuth Client [Free] for Efficiency";
+		$ssoTest = base64_decode($customerDetails['sso_test']);
+		$ssoVar = base64_decode($customerDetails['sso_var']);
+		$baseUrl = Uri::root();
+		$appname = empty($appname) && isset($configDetails['appname']) ? $configDetails['appname'] : $appname;
+		$scope = ($scope == 'NULL') && isset($configDetails['app_scope']) ? $configDetails['app_scope'] : $scope;
+		$authorisationURL = ($authorisationURL == 'NULL') && isset($configDetails['authorize_endpoint']) ? $configDetails['authorize_endpoint'] : $authorisationURL;
+		$accesstokenurl  = ($accesstokenurl == 'NULL') && isset($configDetails['access_token_endpoint']) ? $configDetails['access_token_endpoint'] : $accesstokenurl;
+		$resourceownerdetailsurl  = ($resourceownerdetailsurl == 'NULL') && isset($configDetails['user_info_endpoint']) ? $configDetails['user_info_endpoint'] : $resourceownerdetailsurl;
+		$serverName = self::getServerType();
+		$timezone = self::getUserTimezone();
 
-        return ($content);
-    }
+		$query1 = "miniOrange Joomla [Free] OAuth Client to improve efficiency ";
+		$content = '<div >Hello, <br><br>
+            Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
+            Server :' . $appname . '<br><br>
+            <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
+            <b>Email :<a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></b><br><br>
+            <b>Plugin Efficency Check: ' . $query1 . '</b><br><br>
+            <b>Website: ' . $baseUrl . '</b><br><br>
+            <b>Time Zone: ' . $timezone . '</b><br><br>
+            <b>Server Name:' . $serverName . '</b><br><br>
+            Creation Date:' . $cTime . '<br>
+            Daily SSO:' . $dnoSsos . '<br>
+            Total SSO:' . $tnoSsos . '<br>
+            Login Count:' . $ssoTest . '<br>
+            Login Limit:' . $ssoVar . '<br>
+            Previous Update:' . $previousUpdate . '<br>
+            Current Update:' . $presentUpdate . '<br>
+            Scope: ' . $scope . '<br>
+            Authorize Endpoint:' . $authorisationURL . '<br>
+            Token Endpoint: ' . $accesstokenurl . '<br>
+            Userinfo Endpoint: ' . $resourceownerdetailsurl . ' <br>
+            Header/Body: ' . $inHeaderOrBody . '<br>
+            Test Configuration: ' . $testConfiguration . ' <br>
+            Message:' . $reason . '</div>';
 
-    public static function getServerType()
-    {
-        return $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
-    }
+		$fields = array(
+			'customerKey'    => $customerKey,
+			'sendEmail'     => true,
+			'email'         => array(
+				'customerKey'   => $customerKey,
+				'fromEmail'     => $fromEmail,
+				'fromName'      => 'miniOrange',
+				'bccEmail'      => 'nikhil.bhot@xecurify.com',
+				'toEmail'       => 'nutan.barad@xecurify.com',
+				'toName'        => 'nutan.barad@xecurify.com',
+				'subject'       => $subject,
+				'content'       => $content
+			),
+		);
 
-    public static function getUserTimezone()
-    {
-        $app = Factory::getApplication();
-        try {
-            // 1. Browser timezone (BEST & VPN-proof)
-            if (!empty($_COOKIE['user_tz'])) {
-                $tz = new DateTimeZone($_COOKIE['user_tz']);
-                $dt = new DateTime('now', $tz);
-                return 'UTC' . $dt->format('P') . ' (' . $_COOKIE['user_tz'] . ')';
-            }
+		self::sendEmail($fields);
+	}
 
-            if (method_exists($app, 'getIdentity')) {
-                $user = $app->getIdentity();     // Joomla 4+
-            } else {
-                $user = Factory::getUser();      // Joomla 3
-            }
-            if ($user && $user->id) {
-                $userTz = $user->getParam('timezone');
-                if (!empty($userTz)) {
-                    $tz = new \DateTimeZone($userTz);
-                    $dt = new \DateTime('now', $tz);
-                    return 'UTC' . $dt->format('P');
-                }
-            }
+	public static function sendInstallationEmail()
+	{
+		$customerKey          = MoOauthUtility::getMiniOrangeCustomerKey();
+		$app = Factory::getApplication();
 
-            // 3. Joomla global timezone
-            if (method_exists($app, 'getConfig')) {
-                $siteTz = $app->getConfig()->get('offset');     // Joomla 4+
-            } else {
-                $siteTz = Factory::getConfig()->get('offset');     // Joomla 3
-            }
-            
-            if (!empty($siteTz)) {
-                $tz = new \DateTimeZone($siteTz);
-                $dt = new \DateTime('now', $tz);
-                return 'UTC' . $dt->format('P');
-            }
+		if (method_exists($app, 'getIdentity'))
+		{
+			// Joomla 4+
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			// Joomla 3
+			$user = Factory::getUser();
+		}
 
-        } catch (\Exception $e) {
-            return 'UTC+00:00';
-        }
+		$adminEmail = $user->email;
+		$jVersion = new Version;
+		$phpVersion = phpversion();
+		$jCmsVersion = $jVersion->getShortVersion();
+		$osName = php_uname('s');
+		$osRelease = php_uname('r');
+		$osArch = php_uname('m');
+		$timezone = self::getUserTimezone();
 
-        // 4. Final fallback
-        return 'UTC+00:00';
-    }
+		if (class_exists("MoOAuthUtility"))
+		{
+			$moPluginVersion = MoOauthUtility::getPluginVersion();
+		}
+		else
+		{
+			$moPluginVersion = "NA";
+		}
 
-    function getAppJason()
-    {
-        return '{	
+		$serverName = self::getServerType();
+
+		$subject  = "Installation of Joomla OAuth Client [Free]";
+
+		$content = '<div >Hello, <br><br>
+            Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
+            <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
+            <b>System Information: </b>Joomla:' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Time Zone: ' . $timezone . '<br>
+            <b>Server Name: </b>' . $serverName . '</div>';
+
+		$fields = array(
+			'customerKey'   => $customerKey,
+			'sendEmail'     => true,
+			'email'         => array(
+				'customerKey'   => $customerKey,
+				'fromEmail'     => $adminEmail,
+				'fromName'      => 'miniOrange',
+				'toEmail'       => 'nutan.barad@xecurify.com',
+				'bccEmail'      => 'nikhil.bhot@xecurify.com',
+				'toName'        => 'nutan.barad@xecurify.com',
+				'subject'       => $subject,
+				'content'       => $content
+			),
+		);
+
+		self::sendEmail($fields);
+	}
+
+	public function submitContactUs($qEmail, $qPhone, $query, $attributes)
+	{
+		if (!MoOauthUtility::isCurlInstalled())
+		{
+			return json_encode(array("status" => 'CURL_ERROR','statusMessage' => '<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+		}
+
+		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
+		$fromEmail    = $qEmail;
+		$app = Factory::getApplication();
+
+		if (method_exists($app, 'getIdentity'))
+		{
+			// Joomla 4+
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			// Joomla 3
+			$user = Factory::getUser();
+		}
+
+		$adminEmail = $user->email;
+		$jVersion = new Version;
+		$phpVersion = phpversion();
+		$moSystemOS = MoOauthUtility::getOperatingSystem();
+		$jCmsVersion = $jVersion->getShortVersion();
+		$moPluginVersion = MoOauthUtility::getPluginVersion();
+		$serverName = self::getServerType();
+		$timezone = self::getUserTimezone();
+		$query = '[miniOrange Joomla Oauth Client Free | ' . $phpVersion . ' | ' . $jCmsVersion . ' | ' . $moPluginVersion . ' | ' . $moSystemOS . ' | ' . $timezone . '] <br> ' . $query;
+		$query = $query . '<br><strong>Configuration: </strong><br> <strong>App Name:</strong>  ' . $attributes['appname'] . '<br> <strong>Custom App: </strong> ' . $attributes['custom_app'] . ' <br> <strong>App Scope: </strong>' . $attributes['app_scope'] . '<br> <strong>Authorize Endpoint: </strong>' . $attributes['authorize_endpoint'];
+		$subject = "Query for Joomla OAuth Client Free  - " . $fromEmail;
+		$content = '<div>Hello, <br><br>
+            <strong>Company: </strong> <a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
+            <strong>Phone Number: </strong>' . $qPhone . '<br><br>
+            <strong>Admin Email: </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
+            <b>Email: <a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></b><br>
+            <b>Server Name: </b>' . $serverName . '<br>
+            <b>Query: </b>' . $query . '</div>';
+
+		$fields = array(
+			'customerKey'    => $customerKey,
+			'sendEmail'     => true,
+			'email'         => array(
+				'customerKey'     => $customerKey,
+				'fromEmail'     => $fromEmail,
+				'fromName'      => 'miniOrange',
+				'toEmail'       => 'joomlasupport@xecurify.com',
+				'toName'        => 'joomlasupport@xecurify.com',
+				'subject'         => $subject,
+				'content'         => $content
+			),
+		);
+
+		return self::sendEmail($fields);
+	}
+
+	private static function sendEmail($fields)
+	{
+		$fieldString = json_encode($fields);
+
+		if (!MoOauthUtility::isCurlInstalled())
+		{
+			return json_encode(array("status" => 'CURL_ERROR','statusMessage' => '<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+		}
+
+		$hostname = MoOauthUtility::getHostname();
+		$url = $hostname . '/moas/api/notify/send';
+		$ch = curl_init($url);
+
+		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
+		$apiKey = MoOauthUtility::getMiniOrangeApiKey();
+
+		if (empty($customerKey) || empty($apiKey))
+		{
+			return json_encode(
+				[
+					'status'        => 'Error',
+					'statusMessage' => 'MiniOrange API credentials are not configured.',
+				]
+			);
+		}
+
+		$currentTimeInMillis = round(microtime(true) * 1000);
+		$stringToHash = $customerKey . number_format($currentTimeInMillis, 0, '', '') . $apiKey;
+		$hashValue = hash("sha512", $stringToHash);
+		$customerKeyHeader = "Customer-Key: " . $customerKey;
+		$timestampHeader = "Timestamp: " . number_format($currentTimeInMillis, 0, '', '');
+		$authorizationHeader = "Authorization: " . $hashValue;
+
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_ENCODING, "");
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		MoOauthUtility::applySecureCurlOptions($ch);
+
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt(
+			$ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
+			$timestampHeader, $authorizationHeader)
+		);
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $fieldString);
+		$proxyServer = self::getConfigurationDetails();
+		$proxyHostName = isset($proxyServer['proxy_host_name']) ? $proxyServer['proxy_host_name'] : '';
+		$portNumber = isset($proxyServer['port_number']) ? $proxyServer['port_number'] : '';
+		$username = isset($proxyServer['username']) ? $proxyServer['username'] : '';
+		$password = isset($proxyServer['password']) ? base64_decode($proxyServer['password']) : '';
+
+		if (!empty($proxyHostName))
+		{
+			curl_setopt($ch, CURLOPT_PROXY, $proxyHostName);
+			curl_setopt($ch, CURLOPT_PROXYPORT, $portNumber);
+			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+			curl_setopt($ch, CURLOPT_PROXYUSERPWD, $username . ':' . $password);
+		}
+
+		$content = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			return json_encode(array("status" => 'Error','message' => 'Request Error: ' . curl_error($ch)));
+		}
+
+		return ($content);
+	}
+
+	public static function getServerType()
+	{
+		return $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
+	}
+
+	public static function getUserTimezone()
+	{
+		$app = Factory::getApplication();
+
+		try
+		{
+			if (!empty($_COOKIE['user_tz']))
+			{
+				$tz = new DateTimeZone($_COOKIE['user_tz']);
+				$dt = new DateTime('now', $tz);
+
+				return 'UTC' . $dt->format('P') . ' (' . $_COOKIE['user_tz'] . ')';
+			}
+
+			if (method_exists($app, 'getIdentity'))
+			{
+				// Joomla 4+
+				$user = $app->getIdentity();
+			}
+			else
+			{
+				// Joomla 3
+				$user = Factory::getUser();
+			}
+
+			if ($user && $user->id)
+			{
+				$userTz = $user->getParam('timezone');
+
+				if (!empty($userTz))
+				{
+					$tz = new \DateTimeZone($userTz);
+					$dt = new \DateTime('now', $tz);
+
+					return 'UTC' . $dt->format('P');
+				}
+			}
+
+			if (method_exists($app, 'getConfig'))
+			{
+				// Joomla 4+
+				$siteTz = $app->getConfig()->get('offset');
+			}
+			else
+			{
+				// Joomla 3
+				$siteTz = Factory::getConfig()->get('offset');
+			}
+
+			if (!empty($siteTz))
+			{
+				$tz = new \DateTimeZone($siteTz);
+				$dt = new \DateTime('now', $tz);
+
+				return 'UTC' . $dt->format('P');
+			}
+		}
+		catch (\Exception $e)
+		{
+			return 'UTC+00:00';
+		}
+
+		return 'UTC+00:00';
+	}
+
+	public function getAppJason()
+	{
+		return '{
         "azure": {
             "label":"Azure AD", "type":"oauth", "image":"azure.png", "scope": "openid email profile", "authorize": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize", "token": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token", "userinfo":"https://graph.microsoft.com/beta/me", "guide":"https://plugins.miniorange.com/azure-ad-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-windowslive"
         },
@@ -530,13 +630,13 @@ class MoOauthCustomer
             "label":"Autodesk", "type":"oauth", "image":"autodesk.png", "scope": "user:read user-profile:read", "authorize": "https://developer.api.autodesk.com/authentication/v1/authorize", "token": "https://developer.api.autodesk.com/authentication/v1/gettoken", "userinfo": "https://developer.api.autodesk.com/userprofile/v1/users/@me", "guide":"https://plugins.miniorange.com/autodesk-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
         },
         "zendesk": {
-            "label":"Zendesk", "type":"oauth", "image":"zendesk.png", "scope": "read write", "authorize": "https://{domain}/oauth/authorizations/new", "token": "https://{domain}/oauth/tokens", "userinfo": "https://{domain}/api/v2/users", "guide":"https://plugins.miniorange.com/zendesk-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
+            "label":"Zendesk", "type":"oauth", "image":"zendesk.png", "scope": "read write", "authorize": "https://{domain}/oauth/authorizations/new", "token": "https://{domain}/oauth/tokens", "userinfo": "https://{domain}/api/v2/users", "guide":"", "logo_class":"fa fa-lock"
         },
         "laravel": {
             "label":"Laravel", "type":"oauth", "image":"laravel.png", "scope": "", "authorize": "http://{domain}/oauth/authorize", "token": "http://{domain}/oauth/token", "userinfo": "http://{domain}}/api/user/get", "guide":"https://plugins.miniorange.com/laravel-passport-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
         },
         "identityserver": {
-            "label":"Identity Server", "type":"oauth", "image":"identityserver.png", "scope": "openid", "authorize": "https://{domain}/connect/authorize", "token": "https://{domain}/connect/token", "userinfo": "https://{domain}/connect/introspect", "guide":"https://plugins.miniorange.com/identityserver3-oauth-openid-connect-single-sign-on-sso-into-joomla-identityserver3-sso-login", "logo_class":"fa fa-lock"
+            "label":"Identity Server", "type":"oauth", "image":"identityserver.png", "scope": "openid", "authorize": "https://{domain}/connect/authorize", "token": "https://{domain}/connect/token", "userinfo": "https://{domain}/connect/introspect", "guide":"", "logo_class":"fa fa-lock"
         },
         "nextcloud": {
             "label":"Nextcloud", "type":"oauth", "image":"nextcloud.png", "scope": "user:read:email", "authorize": "https://{domain}/index.php/apps/oauth2/authorize", "token": "https://{domain}/index.php/apps/oauth2/api/v1/token", "userinfo": "https://{domain}/ocs/v2.php/cloud/user?format=json", "guide":"https://plugins.miniorange.com/nextcloud-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
@@ -578,7 +678,7 @@ class MoOauthCustomer
             "label":"Twitter", "type":"oauth", "image":"twitter-logo.webp", "scope": "email", "authorize": "https://api.twitter.com/oauth/authorize", "token": "https://api.twitter.com/oauth2/token", "userinfo": "https://api.twitter.com/1.1/users/show.json?screen_name=here-comes-twitter-screen-name", "guide":"https://plugins.miniorange.com/twitter-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
         },
         "WordPress": {
-            "label":"WordPress", "type":"oauth", "image":"wordpress.png", "scope": "profile openid email custom", "authorize": "http://{site_base_url}/wp-json/moserver/authorize", "token": "http://{site_base_url}/wp-json/moserver/token", "userinfo": "http://{site_base_url}/wp-json/moserver/resource", "guide":"https://plugins.miniorange.com/oauth-openid-connect-single-sign-on-sso-into-joomla-using-wordpress", "logo_class":"fa fa-lock"
+            "label":"WordPress", "type":"oauth", "image":"wordpress.png", "scope": "profile openid email custom", "authorize": "http://{site_base_url}/wp-json/moserver/authorize", "token": "http://{site_base_url}/wp-json/moserver/token", "userinfo": "http://{site_base_url}/wp-json/moserver/resource", "guide":"", "logo_class":"fa fa-lock"
         },
         "Subscribestar": {
             "label":"Subscribestar", "type":"oauth", "image":"Subscriberstar-logo.png", "scope": "user.read user.email.read", "authorize": "https://www.subscribestar.com/oauth2/authorize", "token": "https://www.subscribestar.com/oauth2/token", "userinfo": "https://www.subscribestar.com/api/graphql/v1?query={user{name,email}}", "guide":"https://plugins.miniorange.com/subscribestar-oauth-openid-connect-single-sign-on-sso-into-joomla-subscribestar-sso-login", "logo_class":"fa fa-lock"
@@ -596,7 +696,7 @@ class MoOauthCustomer
             "label":"ServiceNow", "type":"oauth", "image":"servicenow-logo.webp", "scope": "email profile", "authorize": "https://{your-servicenow-domain}/oauth_auth.do", "token": "https://{your-servicenow-domain}/oauth_token.do", "userinfo": "https://{your-servicenow-domain}/{base-api-path}?access_token=", "guide":"https://plugins.miniorange.com/servicenow-sso-single-sign-on-into-joomla-using-oauth-openid-connect", "logo_class":"fa fa-lock"
         },
         "IMIS": {
-            "label":"IMIS", "type":"oauth", "image":"imis-logo.webp", "scope": "openid", "authorize": "https://{your-imis-domain}/sso-pages/Aurora-SSO-Redirect.aspx", "token": "https://{your-imis-domain}/token", "userinfo": "https://{your-imis-domain}/api/iqa?queryname=$/Bearer_Info_Aurora", "guide":"https://plugins.miniorange.com/imis-sso-single-sign-on-into-joomla-using-oauth-openid-connect", "logo_class":"fa fa-lock"
+            "label":"IMIS", "type":"oauth", "image":"imis-logo.webp", "scope": "openid", "authorize": "https://{your-imis-domain}/sso-pages/Aurora-SSO-Redirect.aspx", "token": "https://{your-imis-domain}/token", "userinfo": "https://{your-imis-domain}/api/iqa?queryname=$/Bearer_Info_Aurora", "guide":"", "logo_class":"fa fa-lock"
         },
 		"Canvas": {
 			"label":"Canvas", "type":"oauth", "image":"canvas-logo.webp", "scope": "openid profile", "authorize": "https://{your-site-url}/login/oauth2/auth", "token": "https://{your-site-url}/login/oauth2/token", "userinfo": "https://{your-site-url}/login/v2.1/users/self", "guide":"https://plugins.miniorange.com/canvas-sso-single-sign-on-into-joomla-using-oauth-openid-connect", "logo_class":"fa fa-lock"
@@ -605,7 +705,7 @@ class MoOauthCustomer
             "label":"Azure B2C", "type":"openidconnect", "image":"azure.png", "scope": "openid email", "authorize": "https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/oauth2/v2.0/authorize", "token": "https://{tenant}.b2clogin.com/{tenant}.onmicrosoft.com/{policy}/oauth2/v2.0/token", "userinfo": "", "guide":"https://plugins.miniorange.com/azure-ad-b2c-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-windowslive"
         },
         "adfs": {
-            "label":"ADFS", "type":"openidconnect", "image":"adfs.png", "scope": "openid", "authorize": "https://{domain}/adfs/oauth2/authorize/", "token": "https://{domain}/adfs/oauth2/token/", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-windowslive"
+            "label":"ADFS", "type":"openidconnect", "image":"adfs.png", "scope": "openid", "authorize": "https://{domain}/adfs/oauth2/authorize/", "token": "https://{domain}/adfs/oauth2/token/", "userinfo": "", "guide":"", "logo_class":"fa fa-windowslive"
         },
         "keycloak": {
             "label":"keycloak", "type":"openidconnect", "image":"keycloak.png", "scope": "openid", "authorize": "{domain}realms/{realm}/protocol/openid-connect/auth", "token": "{domain}realms/{realm}/protocol/openid-connect/token", "userinfo": "{domain}realms/{realm}/protocol/openid-connect/userinfo", "guide":"https://plugins.miniorange.com/keycloak-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
@@ -620,7 +720,7 @@ class MoOauthCustomer
             "label":"PayPal", "type":"openidconnect", "image":"paypal.png", "scope": "openid", "authorize": "https://www.paypal.com/signin/authorize", "token": "https://api.paypal.com/v1/oauth2/token", "userinfo": "", "guide":"https://plugins.miniorange.com/paypal-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-paypal"
         },
         "swiss-rx-login": {
-            "label":"Swiss RX Login", "type":"openidconnect", "image":"swiss-rx-login.png", "scope": "anonymous", "authorize": "https://www.swiss-rx-login.ch/oauth/authorize", "token": "https://swiss-rx-login.ch/oauth/token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+            "label":"Swiss RX Login", "type":"openidconnect", "image":"swiss-rx-login.png", "scope": "anonymous", "authorize": "https://www.swiss-rx-login.ch/oauth/authorize", "token": "https://swiss-rx-login.ch/oauth/token", "userinfo": "", "guide":"https://plugins.miniorange.com/joomla-oauth-client-changelog#top", "logo_class":"fa fa-lock"
         },
         "yahoo": {
             "label":"Yahoo", "type":"openidconnect", "image":"yahoo.png", "scope": "openid", "authorize": "https://api.login.yahoo.com/oauth2/request_auth", "token": "https://api.login.yahoo.com/oauth2/get_token", "userinfo": "", "guide":"https://plugins.miniorange.com/yahoo-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-yahoo"
@@ -629,44 +729,44 @@ class MoOauthCustomer
             "label":"ORCID", "type":"openidconnect", "image":"orcid.png", "scope": "openid", "authorize": "https://orcid.org/oauth/authorize", "token": "https://orcid.org/oauth/token", "userinfo": "", "guide":"https://plugins.miniorange.com/orcid-sso-single-sign-on-joomla-using-oauth-client-openid-connect", "logo_class":"fa fa-lock"
         },
         "diaspora": {
-            "label":"Diaspora", "type":"openidconnect", "image":"diaspora.png", "scope": "openid", "authorize": "https://{domain}/api/openid_connect/authorizations/new", "token": "https://{domain}/api/openid_connect/access_tokens", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+            "label":"Diaspora", "type":"openidconnect", "image":"diaspora.png", "scope": "openid", "authorize": "https://{domain}/api/openid_connect/authorizations/new", "token": "https://{domain}/api/openid_connect/access_tokens", "userinfo": "", "guide":"https://plugins.miniorange.com/joomla-oauth-client-changelog#top", "logo_class":"fa fa-lock"
         },
         "MineCraft": {
-			"label":"MineCraft", "type":"openidconnect", "image":"minecraft-logo.webp", "scope": "openid", "authorize": "https://login.live.com/oauth20_authorize.srf", "token": "https://login.live.com/oauth20_token.srf", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+			"label":"MineCraft", "type":"openidconnect", "image":"minecraft-logo.webp", "scope": "openid", "authorize": "https://login.live.com/oauth20_authorize.srf", "token": "https://login.live.com/oauth20_token.srf", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
 		},
         "Freja EID": {
-            "label":"Freja EID", "type":"openidconnect", "image":"frejaeid-logo.webp", "scope": "openid profile email", "authorize": "https://oidc.prod.frejaeid.com/oidc/authorize", "token": "https://oidc.prod.frejaeid.com/oidc/token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+            "label":"Freja EID", "type":"openidconnect", "image":"frejaeid-logo.webp", "scope": "openid profile email", "authorize": "https://oidc.prod.frejaeid.com/oidc/authorize", "token": "https://oidc.prod.frejaeid.com/oidc/token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
         },
         "Elvanto": {
-            "label":"Elvanto", "type":"openidconnect", "image":"elvanto-logo.webp", "scope": "ManagePeople", "authorize": "https://api.elvanto.com/oauth?", "token": "https://api.elvanto.com/oauth/token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+            "label":"Elvanto", "type":"openidconnect", "image":"elvanto-logo.webp", "scope": "ManagePeople", "authorize": "https://api.elvanto.com/oauth?", "token": "https://api.elvanto.com/oauth/token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
         },
         "UNA": {
-            "label":"UNA", "type":"openidconnect", "image":"una-logo.webp", "scope": "basic", "authorize": "https://{site-url}.una.io/oauth2/authorize?", "token": "https://{site-url}.una.io/oauth2/access_token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+            "label":"UNA", "type":"openidconnect", "image":"una-logo.webp", "scope": "basic", "authorize": "https://{site-url}.una.io/oauth2/authorize?", "token": "https://{site-url}.una.io/oauth2/access_token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
         },
 		"Ticketmaster": {
 			"label":"Ticketmaster", "type":"openidconnect", "image":"ticketmaster-logo.webp", "scope": "openid email", "authorize": "https://auth.ticketmaster.com/as/authorization.oauth2", "token": "https://auth.ticketmaster.com/as/token.oauth2", "userinfo": "", "guide":"https://plugins.miniorange.com/ticketmaster-sso-single-sign-on-into-joomla-using-oauth-openid-connect", "logo_class":"fa fa-lock"
 		},
 		"Mindbody": {
-			"label":"Mindbody", "type":"openidconnect", "image":"mindbody-logo.webp", "scope": "email profile openid", "authorize": "https://signin.mindbodyonline.com/connect/authorize", "token": "https://signin.mindbodyonline.com/connect/token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+			"label":"Mindbody", "type":"openidconnect", "image":"mindbody-logo.webp", "scope": "email profile openid", "authorize": "https://signin.mindbodyonline.com/connect/authorize", "token": "https://signin.mindbodyonline.com/connect/token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
 		},
 		"iGov": {
-			"label":"iGov", "type":"openidconnect", "image":"iGov-logo.webp", "scope": "openid profile", "authorize": "https://idp.government.gov/oidc/authorization", "token": "https://idp.government.gov/token", "userinfo": "", "guide":"https://plugins.miniorange.com/igov-sso-single-sign-on-into-joomla-using-oauth-openid-connect", "logo_class":"fa fa-lock"
+			"label":"iGov", "type":"openidconnect", "image":"iGov-logo.webp", "scope": "openid profile", "authorize": "https://idp.government.gov/oidc/authorization", "token": "https://idp.government.gov/token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
 		},
 		"LearnWorlds": {
-			"label":"LearnWorlds", "type":"openidconnect", "image":"learnworlds-logo.webp", "scope": "openid profile", "authorize": "https://api.learnworlds.com/oauth", "token": "https://api.learnworlds.com/oauth2/access_token", "userinfo": "", "guide":"https://www.miniorange.com/contact", "logo_class":"fa fa-lock"
+			"label":"LearnWorlds", "type":"openidconnect", "image":"learnworlds-logo.webp", "scope": "openid profile", "authorize": "https://api.learnworlds.com/oauth", "token": "https://api.learnworlds.com/oauth2/access_token", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
 		},
         "other": {
             "label":"Custom OAuth", "type":"oauth", "image":"customapp.png", "scope": "", "authorize": "", "token": "", "userinfo": "", "guide":"https://plugins.miniorange.com/joomla-single-sign-on-with-custom-oauth-provider", "logo_class":"fa fa-lock"
         },
         "openidconnect": {
-            "label":"Custom OpenID Connect App", "type":"openidconnect", "image":"customapp.png", "scope": "", "authorize": "", "token": "", "userinfo": "", "guide":"https://plugins.miniorange.com/joomla-single-sign-on-with-custom-openid-connect-provider", "logo_class":"fa fa-lock"
+            "label":"Custom OpenID Connect App", "type":"openidconnect", "image":"customapp.png", "scope": "", "authorize": "", "token": "", "userinfo": "", "guide":"", "logo_class":"fa fa-lock"
         }
         }';
-    }
+	}
 
-    function getAppData()
-    {
-        return '{
+	public function getAppData()
+	{
+		return '{
 			"azure": {
 				"0":"both","1":"Tenant"
 			},
@@ -701,7 +801,7 @@ class MoOauthCustomer
 				"0":"both","1":"Domain"
 			},
 			"gluu": {
-				"0":"both","1": "Domain" 
+				"0":"both","1": "Domain"
 			},
 			"zendesk": {
 				"0":"both","1":"Domain"
@@ -722,10 +822,10 @@ class MoOauthCustomer
 				"0":"both","1":"Domain"
 			},
 			"diaspora": {
-				"0":"both","1":"Domain" 
+				"0":"both","1":"Domain"
 			},
 			"Office 365": {
-				"0":"both","1":"Tenant" 
+				"0":"both","1":"Tenant"
 			},
 			"PingFederate": {
 				"0":"both","1":"Domain"
@@ -758,11 +858,11 @@ class MoOauthCustomer
 				"0":"both","1":"Domain"
 			}
 		}';
-    }
+	}
 
-    function getCountryCodes()
-    {
-        return '[
+	public function getCountryCodes()
+	{
+		return '[
             { "country_name": "Afghanistan", "country_id": "AF", "country_code": "+93" },
             { "country_name": "Albania", "country_id": "AL", "country_code": "+355" },
             { "country_name": "Algeria", "country_id": "DZ", "country_code": "+213" },
@@ -772,7 +872,7 @@ class MoOauthCustomer
             { "country_name": "Armenia", "country_id": "AM", "country_code": "+374" },
             { "country_name": "Australia", "country_id": "AU", "country_code": "+61" },
             { "country_name": "Austria", "country_id": "AT", "country_code": "+43" },
-            { "country_name": "Azerbaijan", "country_id": "AZ", "country_code": "+994" },       
+            { "country_name": "Azerbaijan", "country_id": "AZ", "country_code": "+994" },
             { "country_name": "Bahamas", "country_id": "BS", "country_code": "+1" },
             { "country_name": "Bahrain", "country_id": "BH", "country_code": "+973" },
             { "country_name": "Bangladesh", "country_id": "BD", "country_code": "+880" },
@@ -786,7 +886,7 @@ class MoOauthCustomer
             { "country_name": "Botswana", "country_id": "BW", "country_code": "+267" },
             { "country_name": "Brazil", "country_id": "BR", "country_code": "+55" },
             { "country_name": "Brunei", "country_id": "BN", "country_code": "+673" },
-            { "country_name": "Bulgaria", "country_id": "BG", "country_code": "+359" },     
+            { "country_name": "Bulgaria", "country_id": "BG", "country_code": "+359" },
             { "country_name": "Cambodia", "country_id": "KH", "country_code": "+855" },
             { "country_name": "Cameroon", "country_id": "CM", "country_code": "+237" },
             { "country_name": "Canada", "country_id": "CA", "country_code": "+1" },
@@ -797,21 +897,21 @@ class MoOauthCustomer
             { "country_name": "Croatia", "country_id": "HR", "country_code": "+385" },
             { "country_name": "Cuba", "country_id": "CU", "country_code": "+53" },
             { "country_name": "Cyprus", "country_id": "CY", "country_code": "+357" },
-            { "country_name": "Czech Republic", "country_id": "CZ", "country_code": "+420" },       
+            { "country_name": "Czech Republic", "country_id": "CZ", "country_code": "+420" },
             { "country_name": "Denmark", "country_id": "DK", "country_code": "+45" },
-            { "country_name": "Dominican Republic", "country_id": "DO", "country_code": "+1" },     
+            { "country_name": "Dominican Republic", "country_id": "DO", "country_code": "+1" },
             { "country_name": "Ecuador", "country_id": "EC", "country_code": "+593" },
             { "country_name": "Egypt", "country_id": "EG", "country_code": "+20" },
             { "country_name": "El Salvador", "country_id": "SV", "country_code": "+503" },
             { "country_name": "Estonia", "country_id": "EE", "country_code": "+372" },
-            { "country_name": "Ethiopia", "country_id": "ET", "country_code": "+251" },     
+            { "country_name": "Ethiopia", "country_id": "ET", "country_code": "+251" },
             { "country_name": "Finland", "country_id": "FI", "country_code": "+358" },
-            { "country_name": "France", "country_id": "FR", "country_code": "+33" },        
+            { "country_name": "France", "country_id": "FR", "country_code": "+33" },
             { "country_name": "Georgia", "country_id": "GE", "country_code": "+995" },
             { "country_name": "Germany", "country_id": "DE", "country_code": "+49" },
             { "country_name": "Ghana", "country_id": "GH", "country_code": "+233" },
-            { "country_name": "Greece", "country_id": "GR", "country_code": "+30" },        
-            { "country_name": "Hungary", "country_id": "HU", "country_code": "+36" },       
+            { "country_name": "Greece", "country_id": "GR", "country_code": "+30" },
+            { "country_name": "Hungary", "country_id": "HU", "country_code": "+36" },
             { "country_name": "Iceland", "country_id": "IS", "country_code": "+354" },
             { "country_name": "India", "country_id": "IN", "country_code": "+91" },
             { "country_name": "Indonesia", "country_id": "ID", "country_code": "+62" },
@@ -819,24 +919,24 @@ class MoOauthCustomer
             { "country_name": "Iraq", "country_id": "IQ", "country_code": "+964" },
             { "country_name": "Ireland", "country_id": "IE", "country_code": "+353" },
             { "country_name": "Israel", "country_id": "IL", "country_code": "+972" },
-            { "country_name": "Italy", "country_id": "IT", "country_code": "+39" },     
-            { "country_name": "Japan", "country_id": "JP", "country_code": "+81" },     
+            { "country_name": "Italy", "country_id": "IT", "country_code": "+39" },
+            { "country_name": "Japan", "country_id": "JP", "country_code": "+81" },
             { "country_name": "Kenya", "country_id": "KE", "country_code": "+254" },
-            { "country_name": "Kuwait", "country_id": "KW", "country_code": "+965" },       
+            { "country_name": "Kuwait", "country_id": "KW", "country_code": "+965" },
             { "country_name": "Malaysia", "country_id": "MY", "country_code": "+60" },
             { "country_name": "Mexico", "country_id": "MX", "country_code": "+52" },
             { "country_name": "Nepal", "country_id": "NP", "country_code": "+977" },
             { "country_name": "Netherlands", "country_id": "NL", "country_code": "+31" },
             { "country_name": "New Zealand", "country_id": "NZ", "country_code": "+64" },
             { "country_name": "Nigeria", "country_id": "NG", "country_code": "+234" },
-            { "country_name": "Norway", "country_id": "NO", "country_code": "+47" },        
+            { "country_name": "Norway", "country_id": "NO", "country_code": "+47" },
             { "country_name": "Pakistan", "country_id": "PK", "country_code": "+92" },
             { "country_name": "Philippines", "country_id": "PH", "country_code": "+63" },
             { "country_name": "Poland", "country_id": "PL", "country_code": "+48" },
-            { "country_name": "Portugal", "country_id": "PT", "country_code": "+351" },     
-            { "country_name": "Qatar", "country_id": "QA", "country_code": "+974" },        
+            { "country_name": "Portugal", "country_id": "PT", "country_code": "+351" },
+            { "country_name": "Qatar", "country_id": "QA", "country_code": "+974" },
             { "country_name": "Romania", "country_id": "RO", "country_code": "+40" },
-            { "country_name": "Russia", "country_id": "RU", "country_code": "+7" },     
+            { "country_name": "Russia", "country_id": "RU", "country_code": "+7" },
             { "country_name": "Saudi Arabia", "country_id": "SA", "country_code": "+966" },
             { "country_name": "Singapore", "country_id": "SG", "country_code": "+65" },
             { "country_name": "South Africa", "country_id": "ZA", "country_code": "+27" },
@@ -844,16 +944,16 @@ class MoOauthCustomer
             { "country_name": "Spain", "country_id": "ES", "country_code": "+34" },
             { "country_name": "Sri Lanka", "country_id": "LK", "country_code": "+94" },
             { "country_name": "Sweden", "country_id": "SE", "country_code": "+46" },
-            { "country_name": "Switzerland", "country_id": "CH", "country_code": "+41" },       
+            { "country_name": "Switzerland", "country_id": "CH", "country_code": "+41" },
             { "country_name": "Thailand", "country_id": "TH", "country_code": "+66" },
-            { "country_name": "Turkey", "country_id": "TR", "country_code": "+90" },        
+            { "country_name": "Turkey", "country_id": "TR", "country_code": "+90" },
             { "country_name": "Ukraine", "country_id": "UA", "country_code": "+380" },
             { "country_name": "United Arab Emirates", "country_id": "AE", "country_code": "+971" },
             { "country_name": "United Kingdom", "country_id": "GB", "country_code": "+44" },
-            { "country_name": "United States", "country_id": "US", "country_code": "+1" },      
+            { "country_name": "United States", "country_id": "US", "country_code": "+1" },
             { "country_name": "Vietnam", "country_id": "VN", "country_code": "+84" },
             { "country_name": "Zimbabwe", "country_id": "ZW", "country_code": "+263" }
         ]';
 
-    }
-}?>
+	}
+}

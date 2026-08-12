@@ -8,17 +8,17 @@
  * @license   GNU General Public License version 3; see LICENSE.txt
  * @contact   info@xecurify.com
  */
- 
+
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\MVC\Controller\BaseController;
 class MiniorangeOAuthController extends BaseController
 {
-    /**
-     * The default view for the display method.
-     *
-     * @var   string
-     * @since 12.2
-     */
-    protected $default_view = 'accountsetup';
+	/**
+	 * The default view for the display method.
+	 *
+	 * @var   string
+	 * @since 12.2
+	 */
+	protected $defaultView = 'accountsetup';
 }
