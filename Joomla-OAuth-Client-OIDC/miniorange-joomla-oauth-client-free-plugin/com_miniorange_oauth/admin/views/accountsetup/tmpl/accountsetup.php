@@ -175,6 +175,7 @@ if (!PluginHelper::isEnabled('system', 'miniorangeoauth'))
 				<li><?php echo Text::_('COM_MINIORANGE_OAUTH_TERMS_AND_CONDITIONS4');?></li>
 				<li>
 					<form method="post" name="f" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.saveAdminMail'); ?>" >
+						<?php echo HTMLHelper::_('form.token'); ?>
 						<?php
 						$dVar = new JConfig;
 						$checkEmail = $dVar->mailfrom;
@@ -468,6 +469,8 @@ function configuration($oauthApp, $appLabel)
 	}
 
 	$moOauthApp = $appLabel;
+	$oauthTestExpires = time() + 3600;
+	$oauthTestToken = MoOAuthUtility::buildOAuthTestSignature($appLabel, $oauthTestExpires);
 	$customApp = "";
 	$clientId = "";
 	$clientSecret = "";
@@ -603,7 +606,8 @@ function configuration($oauthApp, $appLabel)
 					<div class="mo_boot_d-flex mo_oauth_align-items-center mo_oauth_config_actions">
 						<a href="https://www.youtube.com/playlist?list=PL2vweZ-PcNpd8-9AvYGYrYx_hXn2vSIsc" target="_blank" class="mo_oauth_guide_link"><span><i class="fa-brands fa-youtube"></i></span> <?php echo Text::_('COM_MINIORANGE_OAUTH_VIDEO_SET');?></a>
 						<a href="<?php echo $guide;?>" target="_blank" class="mo_oauth_guide_link"><span><i class="fa-regular fa-file"></i></span> <?php echo Text::_('COM_MINIORANGE_OAUTH_GUIDE');?></a>
-						<form method="post" name="clear_config" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.clearConfig'); ?>" class="mo_oauth_clear_config_form" onclick="return confirm('<?php echo Text::_('COM_MINIORANGE_DELETE_APPLICATION_CONFIRMATION');?>');">
+						<form method="post" name="clear_config" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.clearConfig'); ?>" class="mo_oauth_clear_config_form" onsubmit="return confirm('<?php echo Text::_('COM_MINIORANGE_DELETE_APPLICATION_CONFIRMATION');?>');">
+							<?php echo HTMLHelper::_('form.token'); ?>
 							<button type="submit" class="mo_oauth_clear_config_btn" title="<?php echo Text::_('COM_MINIORANGE_OAUTH_CLEAR_CONFIGURATION'); ?>"><span><i class="fa-regular fa-trash-can"></i></span></button>
 						</form>
 					</div>
@@ -641,6 +645,7 @@ function configuration($oauthApp, $appLabel)
 								<div class="mo_boot_col-sm-8 mo_boot_m-0">
 									<form id="oauth_config_form_step1" method="post"
 										  action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.saveConfig'); ?>">
+										<?php echo HTMLHelper::_('form.token'); ?>
 										<input type="hidden" name="mo_oauth_app_name" value="<?php echo $moOauthApp; ?>">
 										<input type="hidden" name="oauth_config_form_step1" value="true">
 										<div class="mo_boot_row mo_boot_m-0 mo_boot_p-0">
@@ -695,6 +700,7 @@ function configuration($oauthApp, $appLabel)
 					</div>
 					<div id="mo_oauth_tab_content_step2" class="mo_boot_col-sm-12 mo_boot_mt-3" style="display: <?php echo $progress === 'step2' ? 'block' : 'none'; ?>;">
 						<form id="oauth_config_form_step2" name="" method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.saveConfig'); ?>">
+							<?php echo HTMLHelper::_('form.token'); ?>
 							<input type="hidden" name="oauth_config_form_step2" value="true">
 						<?php
 						$moOauthWellKnownLicenseUrl = Uri::base() . 'index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=license';
@@ -783,6 +789,7 @@ function configuration($oauthApp, $appLabel)
 							</div>
 						</div>
 						<form id="oauth_mapping_form" name="oauth_config_form" method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.saveMapping'); ?>">
+							<?php echo HTMLHelper::_('form.token'); ?>
 							<div class="mo_boot_row mo_boot_p-3 mo_boot_my-0 mo_boot_d-flex mo_oauth_align-items-center">
 								<div class="mo_boot_col-sm-3">
 									<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_EMAIL_ATTR'); ?><span class="mo_oauth_highlight">*</span> : </strong>
@@ -856,6 +863,7 @@ function configuration($oauthApp, $appLabel)
 
 					<div id="mo_oauth_tab_content_advance_settings" class="mo_boot_col-sm-12 mo_boot_mt-3" style="display: <?php echo $progress === 'advance_setting' ? 'block' : 'none'; ?>;">
 						<form method="POST" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.enableSSO'); ?>">
+							<?php echo HTMLHelper::_('form.token'); ?>
 							<input type="hidden" name="mo_oauth_app_name" value="<?php echo $moOauthApp; ?>">
 							<div class="mo_boot_row mo_boot_p-3 mo_boot_d-flex mo_oauth_align-items-center mo_oauth_advance_setting_row">
 								<div class="mo_boot_col-12 mo_boot_col-md-6 mo_boot_col-lg-4 mo_boot_d-flex mo_oauth_align-items-center mo_ouath_flex-gap-3">
@@ -978,7 +986,9 @@ function configuration($oauthApp, $appLabel)
 
 	<script>
 		function testConfiguration() {
-			var appname = "<?php echo $appLabel; ?>";
+			var appname = <?php echo json_encode($appLabel); ?>;
+			var testExpires = <?php echo (int) $oauthTestExpires; ?>;
+			var testToken = <?php echo json_encode($oauthTestToken); ?>;
 			var winl = (screen.width - 800) / 2;
 			var wint = (screen.height - 600) / 2;
 
@@ -991,7 +1001,9 @@ function configuration($oauthApp, $appLabel)
 
 			var popupUrl =
 				'<?php echo Uri::root() . $redirectUrlByVersion; ?>' +
-				'?morequest=testattrmappingconfig&app=' + encodeURIComponent(appname);
+				'?morequest=testattrmappingconfig&app=' + encodeURIComponent(appname) +
+				'&test_expires=' + encodeURIComponent(testExpires) +
+				'&test_token=' + encodeURIComponent(testToken);
 
 			var myWindow = window.open(popupUrl, "Test Attribute Configuration", winprops);
 
@@ -1469,6 +1481,7 @@ function proxySetup()
 				<h1 class="mo_export_heading mo_boot_pt-4 "><?php echo Text::_('COM_MINIORANGE_PROXY_SETUP'); ?></h1>
 				<p><?php echo Text::_('COM_MINIORANGE_PROXY_SETUP_DESCRIPTION'); ?></p>
 				<form action="<?php echo Route::_('index.php?option=com_miniorange_oauth&task=accountsetup.proxyConfig'); ?>" method="post" name="proxy_form">
+					<?php echo HTMLHelper::_('form.token'); ?>
 					<div class="mo_boot_col-sm-12">
 						<div class="mo_boot_row">
 							<div class="mo_boot_col-sm-3">
@@ -1509,7 +1522,13 @@ function proxySetup()
 						<div class="mo_boot_row mo_boot_mt-2">
 							<div class="mo_boot_col-sm-12 mo_boot_mt-3 mo_boot_text-center mo_boot_mb-3">
 								<input type="submit" value=<?php echo Text::_('COM_MINIORANGE_SAVE'); ?> class="mo_boot_btn mo_oauth_cursor mo_oauth_all_btn mo_boot_p-1">
-								<input type="button" value=<?php echo Text::_('COM_MINIORANGE_RESET'); ?> onclick="window.location='<?php echo Route::_('index.php?option=com_miniorange_oauth&task=accountsetup.proxyConfigReset'); ?>'" class="mo_boot_btn mo_oauth_cursor mo_oauth_all_btn mo_boot_p-1">
+								<button
+									type="submit"
+									formaction="<?php echo Route::_('index.php?option=com_miniorange_oauth&task=accountsetup.proxyConfigReset'); ?>"
+									class="mo_boot_btn mo_oauth_cursor mo_oauth_all_btn mo_boot_p-1"
+								>
+									<?php echo Text::_('COM_MINIORANGE_RESET'); ?>
+								</button>
 							</div>
 						</div>
 					</div>
@@ -2063,6 +2082,7 @@ function support()
 						<div class="mo_boot_col-sm-12 mo_boot_mt-2">
 							<div class="mo_boot_row mo_boot_m-2">
 								<form name="f" class="mo_boot_col-sm-12" method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.contactUs'); ?>">
+									<?php echo HTMLHelper::_('form.token'); ?>
 									<div class="mo_boot_col-sm-12">
 										<p class="mo_oauth_p"><?php echo Text::_('COM_MINIORANGE_OAUTH_CONTACT_US_DETAILS');?></p>
 										<br>
@@ -2144,6 +2164,7 @@ function support()
 						</div>
 						<div class="mo_boot_col-sm-12">
 							<form id="demo_request" name="demo_request" method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.requestForDemoPlan'); ?>">
+								<?php echo HTMLHelper::_('form.token'); ?>
 								<div class="mo_boot_row mo_boot_mt-2">
 									<div class="mo_boot_col-sm-3 offset-1">
 										<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_REQUEST_DEMO_EMAIL');?><span class="mo_oauth_highlight">*</span> : </strong>
@@ -2220,6 +2241,7 @@ function support()
 
 					?>
 					<form name="f" method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.callContactUs'); ?>">
+						<?php echo HTMLHelper::_('form.token'); ?>
 						<div class="mo_boot_row">
 							<div class="mo_boot_col-sm-12 mo_boot_px-5">
 								<p  class="mo_oauth_p"><?php echo Text::_('COM_MINIORANGE_OAUTH_SETUP_CALL_NOTE');?></p>
@@ -2603,10 +2625,13 @@ function moImportAndExport($moOauthApp)
 			<div class="mo_boot_mb-2" ><?php echo Text::_('COM_MINIORANGE_EXPORT_CONFIGURATION_TEXT');?></div>
 
 			<div class="mo_boot_mt-4 mo_boot_mb-3">
-				<a href='index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.exportConfiguration' class="oauth_blue_button mo_boot_p-2">
-					<span><i class="fa-duotone fa-solid fa-download"></i></span>
-				<?php echo Text::_('COM_MINIORANGE_EXPORT_CONFIGURATION');?>
-				</a>
+				<form method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.exportConfiguration'); ?>">
+					<?php echo HTMLHelper::_('form.token'); ?>
+					<button type="submit" class="oauth_blue_button mo_boot_p-2">
+						<span><i class="fa-duotone fa-solid fa-download"></i></span>
+						<?php echo Text::_('COM_MINIORANGE_EXPORT_CONFIGURATION');?>
+					</button>
+				</form>
 			</div>
 		</div>
 
@@ -2669,6 +2694,7 @@ function moOAuthLoggerReport()
 						<div class="mo_boot_col-sm-3">
 							<form method="POST" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.moEnableLogs') ?>"
 								class="mo_boot_d-flex mo_oauth_align-items-center mo_ouath_flex-gap-3">
+								<?php echo HTMLHelper::_('form.token'); ?>
 								<label for="mo_enable_logs" class="mo_oauth_enable_logs_label"><?php echo Text::_('COM_MINIORANGE_OAUTH_ENABLE_LOGS'); ?></label>
 								<div class="mo_boot_form-check form-switch">
 									<input type="hidden" name="mo_enable_logs" value="0">
@@ -2677,7 +2703,6 @@ function moOAuthLoggerReport()
 									<?php echo ($loggersEnabled == 1 ? 'checked' : ''); ?>
 										onchange="this.form.submit();">
 								</div>
-							<?php echo HTMLHelper::_('form.token'); ?>
 							</form>
 						</div>
 

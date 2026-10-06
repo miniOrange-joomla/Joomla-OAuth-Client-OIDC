@@ -9,10 +9,28 @@
  * @contact   info@xecurify.com
  */
 defined('_JEXEC') or die('Restricted access');
+
 use Joomla\CMS\Factory;
+use Joomla\CMS\Session\Session;
+use Joomla\CMS\Uri\Uri;
 
 class MoOAuthUtility
 {
+	public static function isAdminPostRequest($input): bool
+	{
+		if (is_object($input) && method_exists($input, 'getMethod'))
+		{
+			return strtoupper($input->getMethod()) === 'POST';
+		}
+
+		return strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'POST';
+	}
+
+	public static function validateAdminFormToken($method = 'post'): bool
+	{
+		return Session::checkToken($method);
+	}
+
 	public static function checkEmptyOrNull($value)
 	{
 		if (! isset($value) || empty($value))
@@ -382,6 +400,113 @@ class MoOAuthUtility
 		return hash_equals($expected, (string) $signature);
 	}
 
+	public static function buildOAuthTestSignature($appName, $expires) {
+		$secret = Factory::getConfig()->get('secret');
+
+		if ($secret === null || $secret === '' || $appName === '' || (int) $expires <= 0) {
+			return '';
+		}
+
+		$payload = (string) $appName . '|' . (int) $expires . '|oauth-test';
+
+		return hash_hmac('sha256', $payload, (string) $secret);
+	}
+
+	public static function verifyOAuthTestSignature($appName, $expires, $signature) {
+		if ($appName === '' || (int) $expires < time() || $signature === '') {
+			return false;
+		}
+
+		$expected = self::buildOAuthTestSignature($appName, $expires);
+
+		return $expected !== '' && hash_equals($expected, (string) $signature);
+	}
+
+	public static function getDefaultPostLoginRedirectUrl()
+	{
+		return Uri::root() . 'index.php?';
+	}
+
+	public static function getSafePostLoginRedirectUrl($candidate, $fallback = null)
+	{
+		if ($fallback === null)
+		{
+			$fallback = self::getDefaultPostLoginRedirectUrl();
+		}
+
+		if (!is_string($candidate))
+		{
+			return $fallback;
+		}
+
+		$candidate = trim($candidate);
+
+		if ($candidate === '')
+		{
+			return $fallback;
+		}
+
+		if (preg_match('#^\s*([a-z][a-z0-9+.\-]*):#i', $candidate, $schemeMatch))
+		{
+			$scheme = strtolower($schemeMatch[1]);
+
+			if (!in_array($scheme, ['http', 'https'], true))
+			{
+				return $fallback;
+			}
+		}
+		elseif (strpos($candidate, '//') === 0)
+		{
+			return $fallback;
+		}
+
+		if ($candidate[0] === '/' && (strlen($candidate) < 2 || $candidate[1] !== '/'))
+		{
+			return $candidate;
+		}
+
+		$uri = Uri::getInstance($candidate);
+		$host = $uri->getHost();
+
+		if ($host === '')
+		{
+			return $fallback;
+		}
+
+		$allowedHosts = self::getAllowedPostLoginRedirectHosts();
+		$normalizedHost = self::normalizePostLoginRedirectHost($host);
+
+		if ($allowedHosts === [] || !in_array($normalizedHost, $allowedHosts, true))
+		{
+			return $fallback;
+		}
+
+		$scheme = strtolower((string) $uri->getScheme());
+
+		if ($scheme !== '' && !in_array($scheme, ['http', 'https'], true))
+		{
+			return $fallback;
+		}
+
+		return $uri->toString();
+	}
+
+	public static function clearReturnUrlCookie()
+	{
+		$expired = self::getSecureCookieOptions(time() - 300);
+		setcookie('returnurl', '', $expired);
+	}
+
+	public static function clearOAuthFlowCookies() {
+		$expired = self::getSecureCookieOptions(time() - 300);
+		setcookie('mo_oauth_state', '', $expired);
+		setcookie('mo_oauth_test', '', $expired);
+		setcookie('mo_oauth_test_app', '', $expired);
+		setcookie('mo_oauth_test_exp', '', $expired);
+		setcookie('mo_oauth_test_token', '', $expired);
+		self::clearReturnUrlCookie();
+	}
+
 	public static function findSsoBridgeSession($sessionId, $userId)
 	{
 		if ($sessionId === '' || (int) $userId <= 0)
@@ -421,6 +546,50 @@ class MoOAuthUtility
 	public static function getMiniOrangeApiKey()
 	{
 		return self::resolveMiniOrangeCredential('MINIORANGE_OAUTH_API_KEY', 'api_key');
+	}
+
+	private static function normalizePostLoginRedirectHost($host)
+	{
+		$host = strtolower((string) $host);
+
+		if (strpos($host, 'www.') === 0)
+		{
+			$host = substr($host, 4);
+		}
+
+		return $host;
+	}
+
+	private static function getAllowedPostLoginRedirectHosts()
+	{
+		$hosts = [];
+		$rootUri = Uri::getInstance(Uri::root());
+
+		if ($rootUri->getHost() !== '')
+		{
+			$hosts[] = self::normalizePostLoginRedirectHost($rootUri->getHost());
+		}
+
+		$currentUri = Uri::getInstance();
+
+		if ($currentUri->getHost() !== '')
+		{
+			$hosts[] = self::normalizePostLoginRedirectHost($currentUri->getHost());
+		}
+
+		$liveSite = (string) Factory::getConfig()->get('live_site', '');
+
+		if ($liveSite !== '')
+		{
+			$liveUri = Uri::getInstance($liveSite);
+
+			if ($liveUri->getHost() !== '')
+			{
+				$hosts[] = self::normalizePostLoginRedirectHost($liveUri->getHost());
+			}
+		}
+
+		return array_values(array_unique(array_filter($hosts)));
 	}
 
 	private static function resolveMiniOrangeCredential($envName, $dbColumn)

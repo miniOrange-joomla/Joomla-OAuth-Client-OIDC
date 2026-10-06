@@ -84,7 +84,6 @@ class PlgWebservicesMiniorangeoauthclient extends CMSPlugin
 		{
 			$msg = "<strong>Error: </strong> " . $queryParams['error'] . "<br>" .
 			   "<strong>Description: </strong> " . $queryParams['error_description'];
-			MoOauthCustomer::pluginEfficiencyCheck('', '', '', '', '', '', '', '', $msg);
 			echo $msg;
 			exit();
 		}

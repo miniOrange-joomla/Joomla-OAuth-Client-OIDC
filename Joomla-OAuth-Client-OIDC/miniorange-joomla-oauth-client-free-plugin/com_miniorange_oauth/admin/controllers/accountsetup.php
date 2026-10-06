@@ -16,10 +16,73 @@ use Joomla\CMS\Language\Text;
 
 class MiniorangeOauthControllerAccountsetup extends FormController
 {
+	private const STATE_CHANGING_TASKS = [
+		'saveadminmail',
+		'saveconfig',
+		'savemapping',
+		'clearconfig',
+		'requestfordemoplan',
+		'callcontactus',
+		'contactus',
+		'exportconfiguration',
+		'mooauthproxyconfigreset',
+		'proxyconfig',
+		'proxyconfigreset',
+		'enablesso',
+		'moenablelogs',
+		'moclearlogs',
+		'modownloadlogs',
+	];
+
 	public function __construct()
 	{
 		$this->viewList = 'accountsetup';
 		parent::__construct();
+	}
+
+	public function execute($task)
+	{
+		$app = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
+
+		if (
+			!$app->isClient('administrator')
+			|| $user === null
+			|| (int) $user->id === 0
+			|| !$user->authorise('core.manage', 'com_miniorange_oauth')
+		) {
+			throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+		}
+
+		$taskName = strtolower((string) $task);
+
+		if (in_array($taskName, self::STATE_CHANGING_TASKS, true))
+		{
+			if (!MoOAuthUtility::isAdminPostRequest($input))
+			{
+				$this->setRedirect(
+					'index.php?option=com_miniorange_oauth&view=accountsetup',
+					Text::_('JLIB_APPLICATION_ERROR_ACCESS_FORBIDDEN'),
+					'error'
+				);
+
+				return false;
+			}
+
+			if (!MoOAuthUtility::validateAdminFormToken('post'))
+			{
+				$this->setRedirect(
+					'index.php?option=com_miniorange_oauth&view=accountsetup',
+					Text::_('JINVALID_TOKEN'),
+					'error'
+				);
+
+				return false;
+			}
+		}
+
+		return parent::execute($task);
 	}
 
 	public function saveAdminMail()
@@ -238,15 +301,6 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 			$cTime = date('m/d/Y H:i:s', $cDate['cd_plugin']);
 		}
 
-		$dVar = new JConfig;
-		$checkEmail = $dVar->mailfrom;
-		$baseUrl = Uri::root();
-		$dnoSsos = 0;
-		$tnoSsos = 0;
-		$previousUpdate = '';
-		$presentUpdate = '';
-		$message = isset($post['oauth_config_form_step1']) ? 'Step 1 saved.' : 'Step 2 saved';
-		MoOauthCustomer::pluginEfficiencyCheck($checkEmail, $appname, $baseUrl, $cTime, $dnoSsos, $tnoSsos, $previousUpdate, $presentUpdate, $message, $scope, $authorizeurl, $accesstokenurl, $resourceownerdetailsurl, $inHeaderOrBody);
 		$this->setRedirect($returnURL, $errMessage);
 	}
 

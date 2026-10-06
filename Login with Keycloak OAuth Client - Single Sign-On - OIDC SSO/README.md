@@ -56,7 +56,7 @@ Simplify authentication on your Joomla site with the **Login with Keycloak OAuth
 ## Installation
 - Download the latest installable package from: [OIDC / OAuth Client Plugin](https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc) (Recommended)  
 OR
-- Go to the **Releases** folder of this repository. Download the file: `Login with Keycloak.zip`
+- Go to the **Releases** folder of this repository. Download the file: `miniorange-joomla-login-with-keycloak.zip`
 
 ---
 

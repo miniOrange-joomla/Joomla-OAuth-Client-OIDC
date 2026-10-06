@@ -100,8 +100,6 @@ class Pkg_OauthclientInstallerScript
 			return;
 		}
 
-		// Call the setup function from the helper
-		MoOauthCustomer::sendInstallationEmail();
 	}
 
 	protected function showInstallMessage($messages=array())

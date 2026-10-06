@@ -17,22 +17,48 @@ use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Uri\Uri;
-use Joomla\CMS\Installer\Installer;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Version;
 use Joomla\CMS\Router\Route;
+use Joomla\CMS\Session\Session;
+use Joomla\CMS\HTML\HTMLHelper;
 
-jimport('joomla.plugin.plugin');
+if (function_exists('jimport'))
+{
+	jimport('joomla.plugin.plugin');
+}
 
-require_once JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauth' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'mo_oauth_utility.php';
-require_once JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauth' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'mo_customer_setup.php';
+$moOauthHelperPath = JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauth' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR;
 
-MoOAuthUtility::loadMoOauthClientHandler();
+// The component can be removed while this plugin is still installed, so its helpers must never be hard requirements.
+if (is_file($moOauthHelperPath . 'mo_oauth_utility.php'))
+{
+	require_once $moOauthHelperPath . 'mo_oauth_utility.php';
+}
+
+if (is_file($moOauthHelperPath . 'mo_customer_setup.php'))
+{
+	require_once $moOauthHelperPath . 'mo_customer_setup.php';
+}
+
+unset($moOauthHelperPath);
+
+if (class_exists('MoOAuthUtility', false))
+{
+	MoOAuthUtility::loadMoOauthClientHandler();
+}
 
 class PlgSystemMiniorangeoauth extends CMSPlugin
 {
+	private static $uninstallFeedbackHandled = false;
+
 	public function onAfterRender()
 	{
+		if (!$this->hasComponentHelpers())
+		{
+			return;
+		}
+
 		$app = Factory::getApplication();
 		$body = $app->getBody();
 		$tab = 0;
@@ -143,18 +169,13 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 
 	public function onAfterInitialise()
 	{
-		$app = Factory::getApplication();
+		if (!$this->hasComponentHelpers())
+		{
+			return;
+		}
 
-		// Get input object
-		if (method_exists($app, 'getInput'))
-		{
-			$input = $app->getInput();
-		}
-		else
-		{
-			// Joomla 3
-			$input = $app->input;
-		}
+		$app = Factory::getApplication();
+		$input = $this->getAppInput($app);
 
 		// Show Joomla blocked-user message when redirected from OAuth callback (blocked account)
 		if ($app->isClient('site') && $input->get('mo_oauth_blocked'))
@@ -170,90 +191,18 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 
 		$cookie = $input->cookie;
 
-		$lang = $app->getLanguage();
+		$lang = method_exists($app, 'getLanguage') ? $app->getLanguage() : Factory::getLanguage();
 
 		$lang->load('plg_system_miniorangeoauth', JPATH_ADMINISTRATOR);
 
 		if (isset($post['mojsp_feedback']))
 		{
-			$radio = !empty($post['deactivate_plugin']) ? $post['deactivate_plugin'] : '';
-			$data = !empty($post['query_feedback']) ? $post['query_feedback'] : '';
-
-			if (isset($post['miniorange_feedback_skip']) && $data == '')
-			{
-				$data = 'Skipped';
-			}
-
-			if (method_exists($app, 'getIdentity'))
-			{
-				// Joomla 4+
-				$user = $app->getIdentity();
-			}
-			else
-			{
-				// Joomla 3
-				$user = Factory::getUser();
-			}
-
-			$feedbackEmail = !empty($post['feedback_email']) ? $post['feedback_email'] : '';
-
-			$fields = array(
-				'uninstall_feedback' => 1
-			);
-			$conditions = array(
-				'id' => '1'
-			);
-
-			MoOAuthUtility::miniOauthUpdateDb('#__miniorange_oauth_customer', $fields, $conditions);
-			$customerResult = MoOAuthUtility::miniOauthFetchDb('#__miniorange_oauth_customer', array('id' => '1'));
-			$adminPhone = isset($customerResult['admin_phone']) ? $customerResult['admin_phone'] : '';
-			$data1 = $radio . ' : ' . $data;
-			MoOauthCustomer::submitFeedbackForm($feedbackEmail, $adminPhone, $data1);
-
-			if (!empty($post['result']) && is_array($post['result']))
-			{
-				foreach ($post['result'] as $fbkey)
-				{
-					$result = MoOAuthUtility::miniOauthFetchDb(
-						'#__extensions',
-						array('extension_id' => $fbkey),
-						'loadColumn',
-						'type'
-					);
-					$type = 0;
-
-					if (is_array($result))
-					{
-						foreach ($result as $results)
-						{
-							$type = $results;
-						}
-					}
-
-					if ($type)
-					{
-						$cid = 0;
-						$db = MoOAuthUtility::getDBObject();
-
-						if (class_exists('Joomla\\CMS\\Installer\\Installer'))
-						{
-							$installer = new Installer;
-
-							if (method_exists($installer, 'setDatabase'))
-							{
-								$installer->setDatabase($db);
-							}
-						}
-						else
-						{
-							jimport('joomla.installer.installer');
-							$installer = JInstaller::getInstance();
-						}
-
-						$installer->uninstall($type, $fbkey, $cid);
-					}
-				}
-			}
+			self::$uninstallFeedbackHandled = true;
+			$this->processUninstallFeedback($app, $post);
+		}
+		elseif ($this->interceptUninstallRequest($app, $input))
+		{
+			return;
 		}
 
 		if ($cookie->get('mo_site', null))
@@ -352,6 +301,11 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 
 	public function onUserLogin($first, $second = null)
 	{
+		if (!$this->hasComponentHelpers())
+		{
+			return;
+		}
+
 		$session = Factory::getSession();
 
 		if (!$session->get('mo_oauth_sso'))
@@ -392,272 +346,17 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 		}
 
 		$customerResult = MoOAuthUtility::miniOauthFetchDb('#__miniorange_oauth_customer', array('id' => '1'));
-		$baseUrl = Uri::root();
-		$cTime = date('m/d/Y H:i:s', $customerResult['cd_plugin'] ?? time());
-		$presentUpdate = date('m/d/Y H:i:s', time());
-		$previousUpdate = date('m/d/Y H:i:s', $customerResult['previous_update'] ?? time());
-		$dnoSsos = $customerResult['dno_ssos'] ?? 0;
-		$tnoSsos = $customerResult['tno_ssos'] ?? 0;
-		$reason = 'User Successfully login.';
-
-		MoOauthCustomer::pluginEfficiencyCheck(
-			$user->email,
-			'',
-			$baseUrl,
-			$cTime,
-			$dnoSsos,
-			$tnoSsos,
-			$previousUpdate,
-			$presentUpdate,
-			$reason
-		);
-	}
-
-	public function onExtensionBeforeUninstall($id)
-	{
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getInput'))
-		{
-			$input = $app->getInput();
-		}
-		else
-		{
-			// Joomla 3
-			$input = $app->input;
-		}
-
-		$post = $input->post->getArray();
-		$db = MoOAuthUtility::getDBObject();
-		$query = $db->getQuery(true);
-		$query->select('extension_id');
-		$query->from('#__extensions');
-		$query->where($db->quoteName('name') . " = " . $db->quote('COM_MINIORANGE_OAUTH'));
-		$db->setQuery($query);
-		$result = $db->loadColumn();
-		$tables = MoOAuthUtility::getDBObject()->getTableList();
-		$tab = 0;
-
-		foreach ($tables as $table)
-		{
-			if (strpos($table, "miniorange_oauth_customer"))
-			{
-				$tab = $table;
-			}
-		}
-
-		if ($tab)
-		{
-			$db = MoOAuthUtility::getDBObject();
-			$query = $db->getQuery(true);
-			$query->select('uninstall_feedback');
-			$query->from('#__miniorange_oauth_customer');
-			$query->where($db->quoteName('id') . " = " . $db->quote(1));
-			$db->setQuery($query);
-			$fid = $db->loadColumn();
-			$tpostData = $post;
-
-			foreach ($fid as $value)
-			{
-				if ($value == 0)
-				{
-					foreach ($result as $results)
-					{
-						if ($results == $id)
-						{
-							?>
-							<div class="form-style-6 " id="form-style-6" style="display: block;">
-								<h1 class="feedback-title">
-									<?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_TITLE'); ?>
-
-									<button type="submit"
-											name="miniorange_feedback_skip"
-											class="close-x"
-											form="mojsp_feedback"
-											formnovalidate
-											title="<?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_SKIP_BUTTON'); ?>">
-										✕
-									</button>
-								</h1>
-								<h3> <?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED'); ?> </h3>
-								<form name="f" method="post" action="" id="mojsp_feedback">
-									<input type="hidden" name="mojsp_feedback" value="mojsp_feedback"/>
-									<div>
-										<p style="margin-left:2%">
-										<?php
-										$deactivateReasons = array(
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_1'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_2'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_4'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_5'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_7'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_8'),
-											Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_9')
-										);
-
-										echo $this->buildDeactivateReasonOptions($deactivateReasons);
-										?>
-										<br>
-										<textarea id="query_feedback" name="query_feedback" rows="4"
-												  style="margin-left:2%"
-												  cols="50" minlength="20" placeholder="<?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_QUERY_PLACEHOLDER'); ?>"></textarea><br><br><br>
-										<tr>
-								<td width="20%"><b> <?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_EMAIL'); ?> <span style="color: #ff0000;">*</span>:</b></td>
-								<td><input type="email" name="feedback_email" required placeholder="<?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_EMAIL_PLACEHOLDER'); ?>" style="width:55%"/></td>
-									   </tr>
-											<?php
-											echo $this->buildHiddenCidInputs($tpostData['cid']);
-											?>
-										<br><br>
-										<div class="mojsp_modal-footer">
-											<input type="submit" name="miniorange_feedback_submit"
-												   class="button button-primary button-large" value="<?php echo Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_SUBMIT_BUTTON'); ?>"/>
-										</div>
-										<br>
-									</div>
-								</form>
-							</div>
-							<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-							<script>
-								jQuery('input:radio[name="deactivate_plugin"]').click(function () {
-									var reason = jQuery(this).val();
-									jQuery('#query_feedback').removeAttr('required');
-									if (reason == 'Facing issues During Registration') {
-										jQuery('#query_feedback').attr("placeholder", "Can you please describe the issue in detail?");
-									} else if (reason == "Does not have the features I'm looking for") {
-										jQuery('#query_feedback').attr("placeholder", "Let us know what feature are you looking for");
-									} else if (reason == "Other Reasons:") {
-										jQuery('#query_feedback').attr("placeholder", "Can you let us know the reason for deactivation");
-										jQuery('#query_feedback').prop('required', true);
-									} else if (reason == "Not able to Configure") {
-										jQuery('#query_feedback').attr("placeholder", "Not able to Configure? let us know so that we can improve the interface");
-									} else if (reason == "Confusing Interface") {
-										jQuery('#query_feedback').attr("placeholder", "Confusing Interface? Reach out to us at joomlasupport@xecurify.com, we'll help set up the plugin");
-									} else if (reason == "Redirecting back to login page after Authentication") {
-										jQuery('#query_feedback').attr("placeholder", "Reach out to us at joomlasupport@xecurify.com, we'll help you resolve the issue");
-									} else if (reason == "Bugs in the plugin") {
-										jQuery('#query_feedback').attr("placeholder", "Kindly let us know at joomlasupport@xecurify.com, what issues were you facing");
-									}else if (reason == "Not Working") {
-										jQuery('#query_feedback').attr("placeholder", "Kindly let us know at joomlasupport@xecurify.com, which functionality of the plugin is not working for you");
-										jQuery('#query_feedback').prop('required', true);
-									}
-								});
-
-								function skip(){
-									jQuery("#myModal").css("display","none");
-									jQuery('#form-style-6').css("display","block");
-								}
-							</script>
-							<style type="text/css">
-								.form-style-6 {
-									font: 95% Arial, Helvetica, sans-serif;
-									max-width: 400px;
-									margin: 10px auto;
-									padding: 16px;
-									background: #F1F4F8;
-									display: none;
-								}
-								.form-style-6 h1 {
-									background: #1F3047;
-									padding: 20px 0;
-									font-size: 140%;
-									font-weight: 300;
-									text-align: center;
-									color: #fff;
-									margin: -16px -16px 16px -16px;
-								}
-								.form-style-6 input[type="text"],
-								.form-style-6 input[type="date"],
-								.form-style-6 input[type="datetime"],
-								.form-style-6 input[type="email"],
-								.form-style-6 input[type="number"],
-								.form-style-6 input[type="search"],
-								.form-style-6 input[type="time"],
-								.form-style-6 input[type="url"],
-								.form-style-6 textarea,
-								.form-style-6 select {
-									transition: all 0.30s ease-in-out;
-									outline: none;
-									box-sizing: border-box;
-									width: 100%;
-									background: #fff;
-									margin-bottom: 4%;
-									border: 1px solid #ccc;
-									padding: 3%;
-									color: #1F3047;
-									font: 95% Arial, Helvetica, sans-serif;
-								}
-								.form-style-6 input[type="text"]:focus,
-								.form-style-6 input[type="date"]:focus,
-								.form-style-6 input[type="datetime"]:focus,
-								.form-style-6 input[type="email"]:focus,
-								.form-style-6 input[type="number"]:focus,
-								.form-style-6 input[type="search"]:focus,
-								.form-style-6 input[type="time"]:focus,
-								.form-style-6 input[type="url"]:focus,
-								.form-style-6 textarea:focus,
-								.form-style-6 select:focus {
-									box-shadow: 0 0 5px #2E486B;
-									border: 1px solid #2E486B;
-									padding: 3%;
-								}
-								.form-style-6 input[type="submit"],
-								.form-style-6 input[type="button"] {
-									box-sizing: border-box;
-									width: 100%;
-									padding: 3%;
-									background: #2E486B;
-									border-bottom: 2px solid #1F3047;
-									border: none;
-									color: #fff;
-									cursor: pointer;
-								}
-								.form-style-6 input[type="submit"]:hover,
-								.form-style-6 input[type="button"]:hover {
-									background: #36547D;
-								}
-								.feedback-title {
-									position: relative;
-								}
-								.close-x {
-									position: absolute;
-									top: 50%;
-									right: 15px;
-									transform: translateY(-50%);
-									background: transparent;
-									border: none;
-									color: #fff;
-									font-size: 22px;
-									font-weight: bold;
-									cursor: pointer;
-									padding: 0;
-								}
-								.close-x:hover {
-									color: #ffdddd;
-								}
-							</style>
-								<?php
-								exit;
-						}
-					}
-				}
-			}
-		}
 	}
 
 	public function onAfterRoute()
 	{
-		$app = Factory::getApplication();
+		if (!$this->hasComponentHelpers())
+		{
+			return;
+		}
 
-		if (method_exists($app, 'getInput'))
-		{
-			$input = $app->getInput();
-		}
-		else
-		{
-			// Joomla 3
-			$input = $app->input;
-		}
+		$app = Factory::getApplication();
+		$input = $this->getAppInput($app);
 
 		$get = $input->get->getArray();
 
@@ -682,33 +381,487 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 		}
 	}
 
-	private function buildDeactivateReasonOptions(array $deactivateReasons): string
+	private function hasComponentHelpers(): bool
+	{
+		return class_exists('MoOAuthUtility', false);
+	}
+
+	private function getAppInput($app)
+	{
+		if (method_exists($app, 'getInput'))
+		{
+			return $app->getInput();
+		}
+
+		// Joomla 3
+		return $app->input;
+	}
+
+	/**
+	 * Catches the com_installer removal request before Joomla touches any extension. Hooking
+	 * onExtensionBeforeUninstall instead would stop the installer half way through a package
+	 * removal and leave the site with orphaned extensions.
+	 */
+	private function interceptUninstallRequest($app, $input): bool
+	{
+		if (self::$uninstallFeedbackHandled || !$app->isClient('administrator'))
+		{
+			return false;
+		}
+
+		if (strtoupper((string) $input->getMethod()) !== 'POST')
+		{
+			return false;
+		}
+
+		if ($input->getCmd('option', '') !== 'com_installer')
+		{
+			return false;
+		}
+
+		if (strpos((string) $input->post->getCmd('task', ''), 'manage.remove') !== 0)
+		{
+			return false;
+		}
+
+		$cids = $this->normaliseExtensionIds($input->post->get('cid', [], 'array'));
+
+		if ($cids === [] || !$this->canManageInstallerUninstall($app) || !Session::checkToken('post'))
+		{
+			return false;
+		}
+
+		if (array_intersect($cids, $this->getMiniOrangeExtensionIds()) === [])
+		{
+			return false;
+		}
+
+		if ($this->isUninstallFeedbackGiven())
+		{
+			return false;
+		}
+
+		self::$uninstallFeedbackHandled = true;
+		$this->renderUninstallFeedbackForm($app, $cids);
+
+		return true;
+	}
+
+	/**
+	 * Renders a standalone feedback page that posts straight back to com_installer, so Joomla itself
+	 * performs the uninstall on whichever version is running.
+	 */
+	private function renderUninstallFeedbackForm($app, array $cids): void
+	{
+		$title             = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_TITLE'));
+		$skipLabel         = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_SKIP_BUTTON'));
+		$whatHappened      = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED'));
+		$emailLabel        = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_EMAIL'));
+		$emailPlaceholder  = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_EMAIL_PLACEHOLDER'));
+		$queryPlaceholder  = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_QUERY_PLACEHOLDER'));
+		$submitLabel       = $this->escape(Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_SUBMIT_BUTTON'));
+		$formAction        = $this->escape(Route::_('index.php?option=com_installer&view=manage', false));
+		$token             = HTMLHelper::_('form.token');
+		$options           = $this->buildReasonOptions();
+		$hiddenIds         = $this->buildExtensionIdInputs($cids);
+
+		$html = <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title</title>
+<style>
+body {
+	font: 95% Arial, Helvetica, sans-serif;
+	background: #fff;
+	margin: 0;
+	padding: 24px 12px;
+	color: #1F3047;
+}
+.mo-feedback {
+	max-width: 460px;
+	margin: 0 auto;
+	background: #F1F4F8;
+	padding: 16px;
+}
+.mo-feedback__title {
+	position: relative;
+	background: #1F3047;
+	padding: 20px 40px 20px 16px;
+	font-size: 140%;
+	font-weight: 300;
+	text-align: center;
+	color: #fff;
+	margin: -16px -16px 16px -16px;
+}
+.mo-feedback__close {
+	position: absolute;
+	top: 50%;
+	right: 15px;
+	transform: translateY(-50%);
+	background: transparent;
+	border: none;
+	color: #fff;
+	font-size: 22px;
+	font-weight: bold;
+	cursor: pointer;
+	padding: 0;
+	line-height: 1;
+}
+.mo-feedback__close:hover {
+	color: #ffdddd;
+}
+.mo-feedback__option {
+	padding: 2px 0;
+}
+.mo-feedback__option label {
+	font-weight: normal;
+	font-size: 14.6px;
+	cursor: pointer;
+	margin-left: 6px;
+}
+.mo-feedback__label {
+	display: block;
+	font-weight: bold;
+	margin: 12px 0 4px;
+}
+.mo-feedback__required {
+	color: #ff0000;
+}
+.mo-feedback textarea,
+.mo-feedback input[type="email"] {
+	transition: all 0.30s ease-in-out;
+	outline: none;
+	box-sizing: border-box;
+	width: 100%;
+	background: #fff;
+	margin: 8px 0;
+	border: 1px solid #ccc;
+	padding: 3%;
+	color: #1F3047;
+	font: 95% Arial, Helvetica, sans-serif;
+}
+.mo-feedback textarea:focus,
+.mo-feedback input[type="email"]:focus {
+	box-shadow: 0 0 5px #2E486B;
+	border: 1px solid #2E486B;
+}
+.mo-feedback input[type="submit"] {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 3%;
+	background: #2E486B;
+	border: none;
+	color: #fff;
+	cursor: pointer;
+	margin-top: 12px;
+}
+.mo-feedback input[type="submit"]:hover {
+	background: #36547D;
+}
+</style>
+</head>
+<body>
+<div class="mo-feedback">
+<form method="post" action="$formAction" id="mojsp_feedback">
+<h1 class="mo-feedback__title">
+$title
+<button type="submit" name="miniorange_feedback_skip" value="1" class="mo-feedback__close" formnovalidate title="$skipLabel">&times;</button>
+</h1>
+<h3>$whatHappened</h3>
+$options
+<textarea id="mo-feedback-detail" name="query_feedback" rows="4" placeholder="$queryPlaceholder"></textarea>
+<label class="mo-feedback__label" for="mo-feedback-email">$emailLabel <span class="mo-feedback__required">*</span></label>
+<input type="email" id="mo-feedback-email" name="feedback_email" required placeholder="$emailPlaceholder">
+<input type="submit" name="miniorange_feedback_submit" value="$submitLabel">
+<input type="hidden" name="mojsp_feedback" value="1">
+<input type="hidden" name="option" value="com_installer">
+<input type="hidden" name="task" value="manage.remove">
+$hiddenIds$token
+</form>
+</div>
+<script>
+(function () {
+	var detail = document.getElementById('mo-feedback-detail');
+	var radios = document.querySelectorAll('input[name="deactivate_plugin"]');
+
+	for (var i = 0; i < radios.length; i++) {
+		radios[i].addEventListener('change', function () {
+			detail.setAttribute('placeholder', this.getAttribute('data-placeholder'));
+
+			if (this.getAttribute('data-detail') === '1') {
+				detail.setAttribute('required', 'required');
+			} else {
+				detail.removeAttribute('required');
+			}
+		});
+	}
+})();
+</script>
+</body>
+</html>
+HTML;
+
+		if (!headers_sent())
+		{
+			header('Content-Type: text/html; charset=utf-8');
+		}
+
+		echo $html;
+
+		$app->close();
+	}
+
+	private function buildReasonOptions(): string
 	{
 		$markup = '';
+		$index = 0;
 
-		foreach ($deactivateReasons as $deactivateReason)
+		foreach ($this->getUninstallReasons() as $reason)
 		{
-			$markup .= '<div class=" radio " style="padding:1px;margin-left:2%;cursor:pointer">
-			<label style="font-weight:normal;font-size:14.6px"
-				   for="' . $deactivateReason . '">
-				<input type="radio" name="deactivate_plugin"
-					   value="' . $deactivateReason . '" required>
-				' . $deactivateReason . '</label>
-		</div>';
+			$inputId = 'mo-feedback-reason-' . $index++;
+			$label = $this->escape($reason['label']);
+
+			$markup .= '<div class="mo-feedback__option">'
+				. '<input type="radio" name="deactivate_plugin" required'
+				. ' id="' . $inputId . '"'
+				. ' value="' . $label . '"'
+				. ' data-placeholder="' . $this->escape($reason['placeholder']) . '"'
+				. ' data-detail="' . ($reason['detail'] ? '1' : '0') . '">'
+				. '<label for="' . $inputId . '">' . $label . '</label>'
+				. '</div>' . "\n";
 		}
 
 		return $markup;
 	}
 
-	private function buildHiddenCidInputs(array $cids): string
+	private function getUninstallReasons(): array
+	{
+		return [
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_1'),
+				'placeholder' => 'Let us know what feature are you looking for',
+				'detail'      => false,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_2'),
+				'placeholder' => 'Confusing Interface? Reach out to us at joomlasupport@xecurify.com, we\'ll help set up the plugin',
+				'detail'      => false,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_4'),
+				'placeholder' => 'Reach out to us at joomlasupport@xecurify.com, we\'ll help you resolve the issue',
+				'detail'      => false,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_5'),
+				'placeholder' => 'Kindly let us know which functionality of the plugin is not working for you',
+				'detail'      => true,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_7'),
+				'placeholder' => 'Kindly let us know what issues you were facing',
+				'detail'      => false,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_8'),
+				'placeholder' => 'Not able to configure? Let us know so that we can improve the interface',
+				'detail'      => false,
+			],
+			[
+				'label'       => Text::_('PLG_SYSTEM_MINIORANGEOAUTH_FEEDBACK_FORM_WHAT_HAPPENED_OPTION_9'),
+				'placeholder' => 'Can you let us know the reason for deactivation',
+				'detail'      => true,
+			],
+		];
+	}
+
+	private function buildExtensionIdInputs(array $cids): string
 	{
 		$markup = '';
 
-		foreach ($cids as $key)
+		foreach ($cids as $cid)
 		{
-			$markup .= '<input type="hidden" name="result[]" value="' . $key . '">';
+			$markup .= '<input type="hidden" name="cid[]" value="' . (int) $cid . '">' . "\n";
 		}
 
 		return $markup;
+	}
+
+	/**
+	 * Records the feedback and then lets the request fall through to com_installer, which runs the
+	 * actual uninstall. Nothing in here may abort the request, otherwise the extension stays behind.
+	 */
+	private function processUninstallFeedback($app, array $post): void
+	{
+		if (!$this->canManageInstallerUninstall($app) || !Session::checkToken())
+		{
+			return;
+		}
+
+		try
+		{
+			MoOAuthUtility::miniOauthUpdateDb(
+				'#__miniorange_oauth_customer',
+				['uninstall_feedback' => 1],
+				['id' => '1']
+			);
+		}
+		catch (\Throwable $e)
+		{
+			// A missing table or column must not stop the uninstall.
+		}
+
+		if (isset($post['miniorange_feedback_skip']) || !class_exists('MoOauthCustomer', false))
+		{
+			return;
+		}
+
+		$reason = !empty($post['deactivate_plugin']) ? (string) $post['deactivate_plugin'] : '';
+		$details = !empty($post['query_feedback']) ? (string) $post['query_feedback'] : '';
+		$feedbackEmail = !empty($post['feedback_email']) ? (string) $post['feedback_email'] : '';
+
+		if ($reason === '' && $details === '')
+		{
+			return;
+		}
+
+		try
+		{
+			$customerResult = MoOAuthUtility::miniOauthFetchDb('#__miniorange_oauth_customer', ['id' => '1']);
+			$adminPhone = isset($customerResult['admin_phone']) ? $customerResult['admin_phone'] : '';
+
+			MoOauthCustomer::submitFeedbackForm($feedbackEmail, $adminPhone, trim($reason . ' : ' . $details, ' :'));
+		}
+		catch (\Throwable $e)
+		{
+			// A failed feedback call must not stop the uninstall.
+		}
+	}
+
+	private function canManageInstallerUninstall($app): bool
+	{
+		if (!$app->isClient('administrator'))
+		{
+			return false;
+		}
+
+		if (method_exists($app, 'getIdentity'))
+		{
+			$user = $app->getIdentity();
+		}
+		else
+		{
+			$user = Factory::getUser();
+		}
+
+		if ($user === null || (int) $user->id === 0)
+		{
+			return false;
+		}
+
+		return $user->authorise('core.admin')
+			|| $user->authorise('core.manage', 'com_installer');
+	}
+
+	private function normaliseExtensionIds($ids): array
+	{
+		if (!is_array($ids))
+		{
+			$ids = [$ids];
+		}
+
+		$normalised = [];
+
+		foreach ($ids as $id)
+		{
+			$id = (int) $id;
+
+			if ($id > 0)
+			{
+				$normalised[] = $id;
+			}
+		}
+
+		return array_values(array_unique($normalised));
+	}
+
+	/**
+	 * Extension ids of the package, its children and the component, so the feedback form is shown no
+	 * matter which part of the bundle the administrator selected.
+	 */
+	private function getMiniOrangeExtensionIds(): array
+	{
+		try
+		{
+			$db = MoOAuthUtility::getDBObject();
+			$query = $db->getQuery(true)
+				->select($db->quoteName('extension_id'))
+				->from($db->quoteName('#__extensions'))
+				->where(
+					$db->quoteName('element') . ' IN ('
+					. $db->quote('pkg_oauthclient') . ', '
+					. $db->quote('com_miniorange_oauth') . ')'
+				);
+			$db->setQuery($query);
+			$rootIds = $this->normaliseExtensionIds($db->loadColumn());
+		}
+		catch (\Throwable $e)
+		{
+			return [];
+		}
+
+		if ($rootIds === [])
+		{
+			return [];
+		}
+
+		try
+		{
+			$query = $db->getQuery(true)
+				->select($db->quoteName('extension_id'))
+				->from($db->quoteName('#__extensions'))
+				->where($db->quoteName('package_id') . ' IN (' . implode(', ', $rootIds) . ')');
+			$db->setQuery($query);
+			$childIds = $this->normaliseExtensionIds($db->loadColumn());
+		}
+		catch (\Throwable $e)
+		{
+			$childIds = [];
+		}
+
+		return array_values(array_unique(array_merge($rootIds, $childIds)));
+	}
+
+	private function isUninstallFeedbackGiven(): bool
+	{
+		try
+		{
+			$result = MoOAuthUtility::miniOauthFetchDb(
+				'#__miniorange_oauth_customer',
+				['id' => '1'],
+				'loadColumn',
+				'uninstall_feedback'
+			);
+		}
+		catch (\Throwable $e)
+		{
+			// Never block an uninstall because the feedback state could not be read.
+			return true;
+		}
+
+		if (!is_array($result) || $result === [])
+		{
+			return true;
+		}
+
+		return (int) reset($result) !== 0;
+	}
+
+	private function escape($value): string
+	{
+		return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 	}
 }

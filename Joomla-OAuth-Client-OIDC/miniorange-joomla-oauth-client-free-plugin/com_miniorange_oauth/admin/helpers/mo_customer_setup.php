@@ -63,7 +63,6 @@ class MoOauthCustomer
 			$user = Factory::getUser();
 		}
 
-		$adminEmail = $user->email;
 		$jVersion = new Version;
 		$phpVersion = phpversion();
 		$moSystemOS = MoOauthUtility::getOperatingSystem();
@@ -71,17 +70,17 @@ class MoOauthCustomer
 		$moPluginVersion = MoOauthUtility::getPluginVersion();
 		$timezone = self::getUserTimezone();
 
-		$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
+		$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
 
 		if (is_null($callDate) && is_null($timeZone))
 		{
-			$content = '<div>Hello, <br><br>Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
+			$content = '<div>Hello, <br><br>Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Plugin Name: </b>' . $plan . '<br><br><b>Description: </b>' . $description;
 			$subject  = "Joomla OAuth Client Request for " . $demoTrail . " - " . $fromEmail;
 		}
 		else
 		{
 			$subject  = "Joomla OAuth Client Request for Screen Share/Call - " . $fromEmail;
-			$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Time Zone:</b> ' . $timeZone . '<br><br><b>Date to set up call: </b>' . $callDate . '<br><br><b>Issue :</b> ' . $plan . '<br><br><b>Description: </b>' . $description;
+			$content = '<div>Hello, <br><br><strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br><b>Email :</b><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br><b>Time Zone:</b> ' . $timeZone . '<br><br><b>Date to set up call: </b>' . $callDate . '<br><br><b>Issue :</b> ' . $plan . '<br><br><b>Description: </b>' . $description;
 		}
 
 		$content .= '<br><br><b>System Information: </b>Joomla:' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $moSystemOS . ' | Time Zone: ' . $timezone . '<br></div>';
@@ -120,7 +119,6 @@ class MoOauthCustomer
 			$user = Factory::getUser();
 		}
 
-		$adminEmail         = $user->email;
 		$jVersion           = new Version;
 		$phpVersion         = phpversion();
 		$jCmsVersion        = $jVersion->getShortVersion();
@@ -146,7 +144,6 @@ class MoOauthCustomer
                     <strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
                     <strong>Phone Number</strong> :' . $phone . '<br><br>
                     <strong>Email :<a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></strong><br><br>
-                    <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
                     <b>Plugin Deactivated: </b>' . $query1 . '<br><br>
                     <b>Reason: </b> ' . $query . '<br><br>
                     <b>System Information: Joomla: </b>' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Time Zone: ' . $timezone . '<br>
@@ -211,145 +208,6 @@ class MoOauthCustomer
 		return $result;
 	}
 
-	// Efficency check of the plugin for better improvement
-	public static function pluginEfficiencyCheck($email, $appname, $baseUrl, $cTime, $dnoSsos, $tnoSsos, $previousUpdate, $presentUpdate, $reason = 'NA', $scope = 'NULL', $authorisationURL = 'NULL', $accesstokenurl = 'NULL', $resourceownerdetailsurl = 'NULL', $inHeaderOrBody = 'NULL', $testConfiguration = "")
-	{
-		$customerDetails = self::getAccountDetails();
-		$configDetails = self::getConfigurationDetails();
-
-		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
-		$fromEmail = $email;
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getIdentity'))
-		{
-			// Joomla 4+
-			$user = $app->getIdentity();
-		}
-		else
-		{
-			// Joomla 3
-			$user = Factory::getUser();
-		}
-
-		$adminEmail = $user !== null && isset($user->email) ? $user->email : $email;
-		$subject = "miniOrange Joomla OAuth Client [Free] for Efficiency";
-		$ssoTest = base64_decode($customerDetails['sso_test']);
-		$ssoVar = base64_decode($customerDetails['sso_var']);
-		$baseUrl = Uri::root();
-		$appname = empty($appname) && isset($configDetails['appname']) ? $configDetails['appname'] : $appname;
-		$scope = ($scope == 'NULL') && isset($configDetails['app_scope']) ? $configDetails['app_scope'] : $scope;
-		$authorisationURL = ($authorisationURL == 'NULL') && isset($configDetails['authorize_endpoint']) ? $configDetails['authorize_endpoint'] : $authorisationURL;
-		$accesstokenurl  = ($accesstokenurl == 'NULL') && isset($configDetails['access_token_endpoint']) ? $configDetails['access_token_endpoint'] : $accesstokenurl;
-		$resourceownerdetailsurl  = ($resourceownerdetailsurl == 'NULL') && isset($configDetails['user_info_endpoint']) ? $configDetails['user_info_endpoint'] : $resourceownerdetailsurl;
-		$serverName = self::getServerType();
-		$timezone = self::getUserTimezone();
-
-		$query1 = "miniOrange Joomla [Free] OAuth Client to improve efficiency ";
-		$content = '<div >Hello, <br><br>
-            Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
-            Server :' . $appname . '<br><br>
-            <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
-            <b>Email :<a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></b><br><br>
-            <b>Plugin Efficency Check: ' . $query1 . '</b><br><br>
-            <b>Website: ' . $baseUrl . '</b><br><br>
-            <b>Time Zone: ' . $timezone . '</b><br><br>
-            <b>Server Name:' . $serverName . '</b><br><br>
-            Creation Date:' . $cTime . '<br>
-            Daily SSO:' . $dnoSsos . '<br>
-            Total SSO:' . $tnoSsos . '<br>
-            Login Count:' . $ssoTest . '<br>
-            Login Limit:' . $ssoVar . '<br>
-            Previous Update:' . $previousUpdate . '<br>
-            Current Update:' . $presentUpdate . '<br>
-            Scope: ' . $scope . '<br>
-            Authorize Endpoint:' . $authorisationURL . '<br>
-            Token Endpoint: ' . $accesstokenurl . '<br>
-            Userinfo Endpoint: ' . $resourceownerdetailsurl . ' <br>
-            Header/Body: ' . $inHeaderOrBody . '<br>
-            Test Configuration: ' . $testConfiguration . ' <br>
-            Message:' . $reason . '</div>';
-
-		$fields = array(
-			'customerKey'    => $customerKey,
-			'sendEmail'     => true,
-			'email'         => array(
-				'customerKey'   => $customerKey,
-				'fromEmail'     => $fromEmail,
-				'fromName'      => 'miniOrange',
-				'bccEmail'      => 'nikhil.bhot@xecurify.com',
-				'toEmail'       => 'nutan.barad@xecurify.com',
-				'toName'        => 'nutan.barad@xecurify.com',
-				'subject'       => $subject,
-				'content'       => $content
-			),
-		);
-
-		self::sendEmail($fields);
-	}
-
-	public static function sendInstallationEmail()
-	{
-		$customerKey          = MoOauthUtility::getMiniOrangeCustomerKey();
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getIdentity'))
-		{
-			// Joomla 4+
-			$user = $app->getIdentity();
-		}
-		else
-		{
-			// Joomla 3
-			$user = Factory::getUser();
-		}
-
-		$adminEmail = $user->email;
-		$jVersion = new Version;
-		$phpVersion = phpversion();
-		$jCmsVersion = $jVersion->getShortVersion();
-		$osName = php_uname('s');
-		$osRelease = php_uname('r');
-		$osArch = php_uname('m');
-		$timezone = self::getUserTimezone();
-
-		if (class_exists("MoOAuthUtility"))
-		{
-			$moPluginVersion = MoOauthUtility::getPluginVersion();
-		}
-		else
-		{
-			$moPluginVersion = "NA";
-		}
-
-		$serverName = self::getServerType();
-
-		$subject  = "Installation of Joomla OAuth Client [Free]";
-
-		$content = '<div >Hello, <br><br>
-            Company :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
-            <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
-            <b>System Information: </b>Joomla:' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Time Zone: ' . $timezone . '<br>
-            <b>Server Name: </b>' . $serverName . '</div>';
-
-		$fields = array(
-			'customerKey'   => $customerKey,
-			'sendEmail'     => true,
-			'email'         => array(
-				'customerKey'   => $customerKey,
-				'fromEmail'     => $adminEmail,
-				'fromName'      => 'miniOrange',
-				'toEmail'       => 'nutan.barad@xecurify.com',
-				'bccEmail'      => 'nikhil.bhot@xecurify.com',
-				'toName'        => 'nutan.barad@xecurify.com',
-				'subject'       => $subject,
-				'content'       => $content
-			),
-		);
-
-		self::sendEmail($fields);
-	}
-
 	public function submitContactUs($qEmail, $qPhone, $query, $attributes)
 	{
 		if (!MoOauthUtility::isCurlInstalled())
@@ -372,7 +230,6 @@ class MoOauthCustomer
 			$user = Factory::getUser();
 		}
 
-		$adminEmail = $user->email;
 		$jVersion = new Version;
 		$phpVersion = phpversion();
 		$moSystemOS = MoOauthUtility::getOperatingSystem();
@@ -386,7 +243,6 @@ class MoOauthCustomer
 		$content = '<div>Hello, <br><br>
             <strong>Company: </strong> <a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
             <strong>Phone Number: </strong>' . $qPhone . '<br><br>
-            <strong>Admin Email: </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
             <b>Email: <a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a></b><br>
             <b>Server Name: </b>' . $serverName . '<br>
             <b>Query: </b>' . $query . '</div>';
@@ -448,6 +304,10 @@ class MoOauthCustomer
 		MoOauthUtility::applySecureCurlOptions($ch);
 
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+
+		// Uninstall feedback is sent while the extension removal is in flight, so this call must never hang.
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 		curl_setopt(
 			$ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
 			$timestampHeader, $authorizationHeader)

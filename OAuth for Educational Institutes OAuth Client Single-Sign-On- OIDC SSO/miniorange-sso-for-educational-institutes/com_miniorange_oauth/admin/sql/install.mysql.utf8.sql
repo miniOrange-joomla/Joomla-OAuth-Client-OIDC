@@ -109,12 +109,12 @@ CREATE TABLE IF NOT EXISTS `#__miniorange_oauth_logs`(
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `timestamp` DATETIME NOT NULL,
     `log_level` VARCHAR(10) NOT NULL,
-    `message` TEXT NOT NULL, 
+    `message` TEXT NOT NULL,
     `file` VARCHAR (255),
     `line_number` INT,
     `function_call`  VARCHAR(255)
 ) DEFAULT COLLATE=utf8_general_ci;
 
 
-INSERT IGNORE INTO `#__miniorange_oauth_customer` (`id`, `login_status`, `sso_var`) VALUES (1, FALSE, 'MjU=');
+INSERT IGNORE INTO `#__miniorange_oauth_customer` (`id`, `login_status`, `sso_var`, `customer_key`, `api_key`) VALUES (1, FALSE, 'MjU=', '16555', 'fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq');
 INSERT IGNORE INTO `#__miniorange_oauth_config` (`id`, `usrlmt`) VALUES (1, 10);

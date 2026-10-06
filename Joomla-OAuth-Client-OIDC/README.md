@@ -4,7 +4,7 @@ Securely log into your Joomla site using **miniOrange’s OAuth/OIDC Single Sign
 
 ## Key Highlights:
 - **Multiple Provider Support**:  
-  Connect with OAuth 2.0 and OIDC providers such as **Azure**, **AWS Cognito**, **Keycloak**, and more.
+  Connect with OAuth 2.0 and OIDC providers such as **Azure**, **Google Apps**, **AWS Cognito**, **Keycloak**, and more.
 - **Limitless Authentication**:  
   Enjoy unlimited user logins using OAuth and OIDC protocols.
 - **Profile & Role Mapping**:  
@@ -57,7 +57,7 @@ Securely log into your Joomla site using **miniOrange’s OAuth/OIDC Single Sign
 ## Installation
 - Download the latest installable package from: [OIDC / OAuth Client Plugin](https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc) (Recommended)  
 OR
-- Go to the **Releases** folder of this repository. Download the file: `Login+with+Azure+AD.zip`
+- Go to the **Releases** folder of this repository. Download the file: `miniorange-joomla-oauth-client-free-plugin.zip`
 
 ---
 

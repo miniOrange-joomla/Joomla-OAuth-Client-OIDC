@@ -8,7 +8,7 @@
  * @license   GNU General Public License version 3; see LICENSE.txt
  * @contact   info@xecurify.com
  */
- 
+
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
@@ -21,211 +21,308 @@ $language->load('com_miniorange_oauth', JPATH_ADMINISTRATOR, null, false, true);
 
 class Mo_OAuth_Hanlder
 {
-    public $error;
-    function __construct($error='')
-    {
-        $this->error=$error;
-    }
+	/**
+	 * @var  string
+	 */
+	private $error;
 
-    function getAccessToken($tokenendpoint, $grant_type, $clientid, $clientsecret, $code, $redirect_url,$in_header_or_body)
-    {
-        if(!MoOauthUtility::is_curl_installed()) {
-            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-        }
+	public function __construct($error = '')
+	{
+		$this->error = $error;
+	}
 
-        $session = Factory::getSession();
-        $ch = curl_init($tokenendpoint);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_ENCODING, "");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_POST, true);
-        
-        if($in_header_or_body=='both') {
-            curl_setopt(
-                $ch, CURLOPT_HTTPHEADER, array(
-                'Accept: application/json',
-                'Authorization: Basic ' . base64_encode($clientid . ":" . $clientsecret)
-                )
-            );
-            curl_setopt($ch, CURLOPT_POSTFIELDS, 'redirect_uri='.urlencode($redirect_url).'&grant_type='.$grant_type.'&client_id='.urlencode($clientid).'&client_secret='.urlencode($clientsecret).'&code='.$code);
+	public function getAccessToken($tokenendpoint, $grantType, $clientid, $clientsecret, $code, $redirectUrl, $inHeaderOrBody)
+	{
+		if (!MoOauthUtility::isCurlInstalled())
+		{
+			$this->handleCurlNotInstalled();
 
-        }
-        elseif($in_header_or_body=='inHeader') {
-            curl_setopt(
-                $ch, CURLOPT_HTTPHEADER, array(
-                'Accept: application/json',
-                'Authorization: Basic ' . base64_encode($clientid . ":" . $clientsecret)
-                )
-            );
-            curl_setopt($ch, CURLOPT_POSTFIELDS, 'redirect_uri='.urlencode($redirect_url).'&grant_type='.$grant_type.'&code='.$code);
-        }
-        else{
-            curl_setopt(
-                $ch, CURLOPT_HTTPHEADER, array(
-                'Accept: application/json'
-                )
-            );
-                  curl_setopt($ch, CURLOPT_POSTFIELDS, 'redirect_uri='.urlencode($redirect_url).'&grant_type='.$grant_type.'&client_id='.$clientid.'&client_secret='.$clientsecret.'&code='.$code);
-        }
-        
-        $content = curl_exec($ch);
+			return ['', ''];
+		}
 
-        if(curl_error($ch)) {
-            MoOAuthLogger::addLog('Error : ' . curl_error($ch), 'CRITICAL', 'MOOAUTH-A02');
-            $this->setError('[MOOAUTH-A02] : ' . curl_error($ch));
-            $session->set('mo_reason', curl_error($ch));
-        }
+		$session = Factory::getSession();
+		$ch = curl_init($tokenendpoint);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_ENCODING, "");
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		MoOauthUtility::applySecureCurlOptions($ch);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_POST, true);
 
-        $content =json_decode($content, true);
-        if(!is_array($content)) {
-            MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-            $this->setError("[MOOAUTH-009] : Invalid response received.");
-            $session->set('mo_reason', 'Invalid response received.');
-        }
+		if ($inHeaderOrBody == 'both')
+		{
+			curl_setopt(
+				$ch, CURLOPT_HTTPHEADER, array(
+				'Accept: application/json',
+				'Authorization: Basic ' . base64_encode($clientid . ":" . $clientsecret)
+				)
+			);
+			curl_setopt(
+				$ch,
+				CURLOPT_POSTFIELDS,
+				http_build_query(
+					[
+						'redirect_uri'  => $redirectUrl,
+						'grant_type'    => $grantType,
+						'client_id'     => $clientid,
+						'client_secret' => $clientsecret,
+						'code'          => $code,
+					]
+				)
+			);
+		}
+		elseif ($inHeaderOrBody == 'inHeader')
+		{
+			curl_setopt(
+				$ch, CURLOPT_HTTPHEADER, array(
+				'Accept: application/json',
+				'Authorization: Basic ' . base64_encode($clientid . ":" . $clientsecret)
+				)
+			);
+			curl_setopt(
+				$ch,
+				CURLOPT_POSTFIELDS,
+				http_build_query(
+					[
+						'redirect_uri' => $redirectUrl,
+						'grant_type'   => $grantType,
+						'code'         => $code,
+					]
+				)
+			);
+		}
+		else
+		{
+			curl_setopt(
+				$ch, CURLOPT_HTTPHEADER, array(
+				'Accept: application/json'
+				)
+			);
+			curl_setopt(
+				$ch,
+				CURLOPT_POSTFIELDS,
+				http_build_query(
+					[
+						'redirect_uri'  => $redirectUrl,
+						'grant_type'    => $grantType,
+						'client_id'     => $clientid,
+						'client_secret' => $clientsecret,
+						'code'          => $code,
+					]
+				)
+			);
+		}
 
-        // first check if any error received
-        if(isset($content["error_description"])) {
-            MoOAuthLogger::addLog('Error : ' . $content["error_description"], 'CRITICAL', 'MOOAUTH-A03');
-            $this->setError("[MOOAUTH-A03] : " . $content["error_description"]);
-            $session->set('mo_reason', $content["error_description"]);
+		$content = curl_exec($ch);
 
-        } else if(isset($content["error"])) {
-            MoOAuthLogger::addLog('Error : ' . $content["error"], 'CRITICAL', 'MOOAUTH-A04');
-            $this->setError("[MOOAUTH-A04] : " . $content["error"]);
-            $session->set('mo_reason',  $content["error"]);
-        }
-        // extract access_token and id_token
-        $idToken=isset($content["id_token"])?$content["id_token"]:'';
-        $access_token=isset($content["access_token"])?$content["access_token"]:'';
-        if(empty($idToken) && empty($access_token)) {
-            MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-            $this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING') . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING_SOLUTION'));
-            $session->set('mo_reason', 'Invalid response received from OAuth Provider. Contact your administrator for more details.');
-        }
-        
-        return array($access_token,$idToken);
-    }
-    
-    function getResourceOwnerFromIdToken($id_token)
-    {
-        $session = Factory::getSession();
-        $id_array = explode(".", $id_token);
-        if(isset($id_array[1])) {
-            $id_body = $this->base64url_decode($id_array[1]);
-            if(is_array(json_decode($id_body, true))) {
-                return json_decode($id_body, true);
-            }
-        }
-        MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-        $this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_INVALID_ID_TOKEN') . $id_token);
-        $session->set('mo_reason', ' Invalid response received.<br><b>Id_token : </b>'.$id_token);
-        return false;
-    }
+		if (curl_error($ch))
+		{
+			MoOAuthLogger::addLog('Error : ' . curl_error($ch), 'CRITICAL', 'MOOAUTH-A02');
+			$this->setError('[MOOAUTH-A02] : ' . curl_error($ch));
+			$session->set('mo_reason', curl_error($ch));
+		}
 
-    function getResourceOwner($resourceownerdetailsurl, $access_token,$idToken)
-    {
-        $session = Factory::getSession();
-        if(!MoOauthUtility::is_curl_installed()) {
-            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-        }
-        if(!empty($idToken) && !is_null($idToken)) {
-            return $this->getResourceOwnerFromIdToken($idToken);
-        }
-        $ch = curl_init($resourceownerdetailsurl);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_ENCODING, "");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_POST, false);
-        curl_setopt(
-            $ch, CURLOPT_HTTPHEADER, array(
-            'Authorization: Bearer '.$access_token,
-            'User-Agent:web'
-            )
-        );    
-        $content = curl_exec($ch);
-        
-        if(curl_error($ch)) {
-            $this->setError(curl_error($ch));
-            $session->set('mo_reason', curl_error($ch));
-            return false;
-        }
-        $content = json_decode($content, true);
-        if(!is_array($content)) {
-            MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-            $this->setError("[MOOAUTH-009] : " . Text::_('COM_MINIORANGE_OAUTH_INVALID_RESPONSE'));
-            $session->set('mo_reason', "Invalid response received.");
-            return false;
-        }
-        
-        if(isset($content["error_description"])) {
-            MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-            $this->setError('[MOOAUTH-009] : ' . $content["error_description"]);
-            $session->set('mo_reason', '[MOOAUTH-009]' .$content["error_description"]);
-            return false;
-        } else if(isset($content["error"])) {
-            MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-            $this->setError('[MOOAUTH-009] : '. $content["error"]);
-            $session->set('mo_reason', '[MOOAUTH-009 : ]'. $content["error"]);
-            return false;
-        } 
-        return $content;
-    }
+		$content = json_decode($content, true);
 
-    function base64url_decode($data) 
-    {
-        $remainder = strlen($data) % 4;
-        if ($remainder) {
-            $padlen = 4 - $remainder;
-            $data .= str_repeat('=', $padlen);
-        }
-        $data = strtr($data, '-_', '+/');
-        return base64_decode($data);
-    }
+		if (!is_array($content))
+		{
+			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+			$this->setError("[MOOAUTH-009] : Invalid response received.");
+			$session->set('mo_reason', 'Invalid response received.');
+		}
 
-    function setError($error)
-    {
-        $this->error=$error;
-    }
-    
-    function isError()
-    {
-        if(empty($this->error)) {
-            return false;
-        }
-        return true;
-    }
+		// First check if any error received
+		if (isset($content["error_description"]))
+		{
+			MoOAuthLogger::addLog('Error : ' . $content["error_description"], 'CRITICAL', 'MOOAUTH-A03');
+			$this->setError("[MOOAUTH-A03] : " . $content["error_description"]);
+			$session->set('mo_reason', $content["error_description"]);
+		}
+		elseif (isset($content["error"]))
+		{
+			MoOAuthLogger::addLog('Error : ' . $content["error"], 'CRITICAL', 'MOOAUTH-A04');
+			$this->setError("[MOOAUTH-A04] : " . $content["error"]);
+			$session->set('mo_reason',  $content["error"]);
+		}
 
-    function printError()
-    {
-        if(!$this->isError()) {
-            return;
-        }
+		// Extract access_token and id_token
+		$idToken = isset($content["id_token"]) ? $content["id_token"] : '';
+		$accessToken = isset($content["access_token"]) ? $content["access_token"] : '';
 
-        if(is_array($this->error)) {
-            print_r($this->error);
-        } else {
-            echo($this->error);
-        }
+		if (empty($idToken) && empty($accessToken))
+		{
+			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+			$this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING') . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING_SOLUTION'));
+			$session->set('mo_reason', 'Invalid response received from OAuth Provider. Contact your administrator for more details.');
+		}
 
-        echo Text::_('COM_MINIORANGE_OAUTH_LOGS_SUGGESTION');
-        exit;
-    }
+		return array($accessToken, $idToken);
+	}
 
-    function showFormattedErrorMessage(string $errorMessage, string $description = '')
-    {
-        $body = "<p style='margin:0 0 10px; font-weight:bold; font-size:16px;'>" . htmlspecialchars($errorMessage) . "</p>";
+	public function getResourceOwnerFromIdToken($idToken)
+	{
+		$session = Factory::getSession();
+		$idArray = explode(".", $idToken);
 
-        if (!empty($description)) {
-            $body .= "<p style='margin:5px 0;'>" . nl2br(htmlspecialchars($description)) . "</p>";
-        }
+		if (isset($idArray[1]))
+		{
+			$idBody = $this->base64urlDecode($idArray[1]);
 
-        echo "
+			if (is_array(json_decode($idBody, true)))
+			{
+				return json_decode($idBody, true);
+			}
+		}
+
+		MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+		$this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_INVALID_ID_TOKEN') . $idToken);
+		$session->set('mo_reason', ' Invalid response received.<br><b>Id_token : </b>' . $idToken);
+
+		return false;
+	}
+
+	public function getResourceOwner($resourceownerdetailsurl, $accessToken, $idToken)
+	{
+		$session = Factory::getSession();
+
+		if (!MoOauthUtility::isCurlInstalled())
+		{
+			$this->handleCurlNotInstalled();
+
+			return false;
+		}
+
+		if (!empty($idToken) && !is_null($idToken))
+		{
+			return $this->getResourceOwnerFromIdToken($idToken);
+		}
+
+		$ch = curl_init($resourceownerdetailsurl);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_ENCODING, "");
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		MoOauthUtility::applySecureCurlOptions($ch);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_POST, false);
+		curl_setopt(
+			$ch, CURLOPT_HTTPHEADER, array(
+			'Authorization: Bearer ' . $accessToken,
+			'User-Agent:web'
+			)
+		);
+		$content = curl_exec($ch);
+
+		if (curl_error($ch))
+		{
+			$this->setError(curl_error($ch));
+			$session->set('mo_reason', curl_error($ch));
+
+			return false;
+		}
+
+		$content = json_decode($content, true);
+
+		if (!is_array($content))
+		{
+			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+			$this->setError("[MOOAUTH-009] : " . Text::_('COM_MINIORANGE_OAUTH_INVALID_RESPONSE'));
+			$session->set('mo_reason', "Invalid response received.");
+
+			return false;
+		}
+
+		if (isset($content["error_description"]))
+		{
+			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+			$this->setError('[MOOAUTH-009] : ' . $content["error_description"]);
+			$session->set('mo_reason', '[MOOAUTH-009]' . $content["error_description"]);
+
+			return false;
+		}
+		elseif (isset($content["error"]))
+		{
+			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
+			$this->setError('[MOOAUTH-009] : ' . $content["error"]);
+			$session->set('mo_reason', '[MOOAUTH-009 : ]' . $content["error"]);
+
+			return false;
+		}
+
+		return $content;
+	}
+
+	private function base64urlDecode($data)
+	{
+		$remainder = strlen($data) % 4;
+
+		if ($remainder)
+		{
+			$padlen = 4 - $remainder;
+			$data .= str_repeat('=', $padlen);
+		}
+
+		$data = strtr($data, '-_', '+/');
+
+		return base64_decode($data);
+	}
+
+	private function handleCurlNotInstalled()
+	{
+		$session = Factory::getSession();
+		$errorMessage = Text::_('COM_MINIORANGE_OAUTH_PHP_CURL') . ' [<a href="https://www.php.net/manual/en/curl.installation.php" target="_blank">' . Text::_('COM_MINIORANGE_OAUTH_LEARN_MORE') . '</a>]';
+
+		MoOAuthLogger::addLog('PHP cURL extension is not installed or disabled.', 'CRITICAL', 'MOOAUTH-CURL');
+		$this->setError($errorMessage);
+		$session->set('mo_reason', Text::_('COM_MINIORANGE_OAUTH_PHP_CURL'));
+	}
+
+	public function setError($error)
+	{
+		$this->error = $error;
+	}
+
+	public function isError()
+	{
+		if (empty($this->error))
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	public function printError()
+	{
+		if (!$this->isError())
+		{
+			return;
+		}
+
+		if (is_array($this->error))
+		{
+			print_r($this->error);
+		}
+		else
+		{
+			echo ($this->error);
+		}
+
+		echo Text::_('COM_MINIORANGE_OAUTH_LOGS_SUGGESTION');
+		exit;
+	}
+
+	public function showFormattedErrorMessage(string $errorMessage, string $description = '')
+	{
+		$body = "<p style='margin:0 0 10px; font-weight:bold; font-size:16px;'>" . htmlspecialchars($errorMessage) . "</p>";
+
+		if (!empty($description))
+		{
+			$body .= "<p style='margin:5px 0;'>" . nl2br(htmlspecialchars($description)) . "</p>";
+		}
+
+		echo "
         <div style='
             background: #fff;
             padding: 18px;
@@ -240,5 +337,5 @@ class Mo_OAuth_Hanlder
             </div>
         </div>
         ";
-    }
+	}
 }

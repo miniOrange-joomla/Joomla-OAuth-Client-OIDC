@@ -14,9 +14,7 @@ Simplify authentication and user access with **Azure AD Single Sign-On (OAuth Op
 - Authorization Code Grant  
 - Implicit Grant  
 - Resource Owner Password Credentials Grant  
-- Client Credentials Grant  
 - Refresh Token Grant  
-- Hybrid Grant  
 - PKCE Flow (Proof Key for Code Exchange)
 
 ---
@@ -67,7 +65,7 @@ Simplify authentication and user access with **Azure AD Single Sign-On (OAuth Op
 ## Installation
 - Download the latest installable package from: [OIDC / OAuth Client Plugin](https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc) (Recommended)  
 OR
-- Go to the **Releases** folder of this repository. Download the file: `miniorange-joomla-oauth-client-free-plugin.zip`
+- Go to the **Releases** folder of this repository. Download the file: `miniorange-joomla-login-with-azure-AD.zip`
 
 ---
 

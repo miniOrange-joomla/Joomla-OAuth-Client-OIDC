@@ -109,8 +109,20 @@ class MoOauthClientHandler
 
 		if (isset($params['morequest']) && $params['morequest'] == 'testattrmappingconfig')
 		{
-			$moOauthAppName = $params['app'];
-			$result = $app->redirect(Route::_(Uri::root() . $redirectUrlByVersion . '?morequest=oauthredirect&app_name=' . urlencode($moOauthAppName) . '&test=true'));
+			$moOauthAppName = isset($params['app']) ? (string) $params['app'] : '';
+			$testExpires = isset($params['test_expires']) ? (int) $params['test_expires'] : 0;
+			$testToken = isset($params['test_token']) ? (string) $params['test_token'] : '';
+
+			if (!MoOAuthUtility::verifyOAuthTestSignature($moOauthAppName, $testExpires, $testToken)) {
+				MoOAuthLogger::addLog('Unauthorized OAuth test request', 'WARNING');
+				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			}
+
+			$testUrl = Uri::root() . $redirectUrlByVersion
+				. '?morequest=oauthredirect&app_name=' . rawurlencode($moOauthAppName)
+				. '&test=true&test_expires=' . $testExpires
+				. '&test_token=' . rawurlencode($testToken);
+			$app->redirect(Route::_($testUrl));
 		}
 		elseif (isset($params['morequest']) && $params['morequest'] == 'oauthredirect')
 		{
@@ -119,26 +131,49 @@ class MoOauthClientHandler
 			Opening of OAuth server dialog box
 			Step 1 of Oauth/OpenID flow
 			*/
-			$appname = $params['app_name'];
+			$appname = isset($params['app_name']) ? (string) $params['app_name'] : '';
+			$isTestRequest = isset($params['test']);
+			$testExpires = isset($params['test_expires']) ? (int) $params['test_expires'] : 0;
+			$testToken = isset($params['test_token']) ? (string) $params['test_token'] : '';
 
-			if (isset($params['test']))
+			if (
+				$isTestRequest
+				&& !MoOAuthUtility::verifyOAuthTestSignature($appname, $testExpires, $testToken)
+			) {
+				MoOAuthLogger::addLog('Unauthorized OAuth test redirect', 'WARNING');
+				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			}
+
+			if ($isTestRequest) {
+				$testCookieOptions = MoOauthUtility::getSecureCookieOptions($testExpires);
+				setcookie('mo_oauth_test', '1', $testCookieOptions);
+				setcookie('mo_oauth_test_app', $appname, $testCookieOptions);
+				setcookie('mo_oauth_test_exp', (string) $testExpires, $testCookieOptions);
+				setcookie('mo_oauth_test_token', $testToken, $testCookieOptions);
+			} else {
+				$expiredCookieOptions = MoOauthUtility::getSecureCookieOptions(time() - 300);
+				setcookie('mo_oauth_test', '', $expiredCookieOptions);
+				setcookie('mo_oauth_test_app', '', $expiredCookieOptions);
+				setcookie('mo_oauth_test_exp', '', $expiredCookieOptions);
+				setcookie('mo_oauth_test_token', '', $expiredCookieOptions);
+			}
+
+			// Save same-site referrer in cookie so we can return after SSO (validated; never trust raw input).
+			if (method_exists($app, 'getInput'))
 			{
-				setcookie('mo_oauth_test', '1', MoOauthUtility::getSecureCookieOptions());
+				$oauthInput = $app->getInput();
 			}
 			else
 			{
-				setcookie('mo_oauth_test', '0', MoOauthUtility::getSecureCookieOptions());
+				$oauthInput = $app->input;
 			}
 
-			// Save the referrer in cookie so that we can come back to origin after SSO
-			if (isset($_SERVER['HTTP_REFERER']))
-			{
-				$loginredirurl = $_SERVER['HTTP_REFERER'];
-			}
+			$referer = $oauthInput->server->getString('HTTP_REFERER', '');
+			$safeReturnUrl = MoOAuthUtility::getSafePostLoginRedirectUrl($referer, '');
 
-			if (!empty($loginredirurl))
+			if ($safeReturnUrl !== '')
 			{
-				setcookie('returnurl', $loginredirurl, MoOauthUtility::getSecureCookieOptions());
+				setcookie('returnurl', $safeReturnUrl, MoOauthUtility::getSecureCookieOptions());
 			}
 
 			// Get Ouath configuration from database
@@ -164,7 +199,7 @@ class MoOauthClientHandler
 				exit;
 			}
 
-			if ($appdata['sso_enable'] == 0 && !isset($params['test']))
+			if ($appdata['sso_enable'] == 0 && !$isTestRequest)
 			{
 				$errMessage = "[MOOAUTH-002] : " . Text::_('LIB_MINIORANGEOAUTH_SSO_DISABLE_WARNING');
 				$app->enqueueMessage($errMessage, 'error');
@@ -172,7 +207,7 @@ class MoOauthClientHandler
 				$app->redirect(Uri::root());
 			}
 
-			$state = base64_encode($appname);
+			$state = $this->createOAuthState($appname);
 			$authorizationUrl = $appdata['authorize_endpoint'];
 
 			if (strpos($authorizationUrl, '?') !== false)
@@ -185,6 +220,11 @@ class MoOauthClientHandler
 			}
 
 			$session->set('oauth2state', $state);
+			setcookie(
+				'mo_oauth_state',
+				$state,
+				MoOauthUtility::getSecureCookieOptions(time() + 3600)
+			);
 
 			header('Location: ' . $authorizationUrl);
 			exit;
@@ -203,23 +243,38 @@ class MoOauthClientHandler
 
 			try
 			{
-				// Get the app name from session or by decoding state
-				$currentappname = "";
+				$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+				$providedState = isset($params['state']) ? (string) $params['state'] : '';
+				$sessionState = (string) $session->get('oauth2state', '');
+				$cookieState = (string) $input->cookie->get('mo_oauth_state', '');
+				$stateMatchesSession = $sessionState !== '' && hash_equals($sessionState, $providedState);
+				$stateMatchesCookie = $cookieState !== '' && hash_equals($cookieState, $providedState);
+
+				$session->clear('oauth2state');
+				setcookie(
+					'mo_oauth_state',
+					'',
+					MoOauthUtility::getSecureCookieOptions(time() - 300)
+				);
+
+				if ($providedState === '' || (!$stateMatchesSession && !$stateMatchesCookie)) {
+					MoOAuthLogger::addLog('OAuth state validation failed', 'WARNING');
+					exit('[MOOAUTH-003] : ' . Text::_('LIB_MINIORANGEOAUTH_NO_REQUEST_FOUND'));
+				}
+
+				// Use the session app when available and the validated state on stateless API callbacks.
+				$currentappname = '';
 				$sessionVar = $session->get('appname');
 
-				if (isset($sessionVar) && !empty($sessionVar))
-				{
+				if (isset($sessionVar) && !empty($sessionVar)) {
 					$currentappname = $session->get('appname');
-				}
-				elseif (isset($params['state']) && !empty($params['state']))
-				{
-					$currentappname = base64_decode($params['state']);
+				} else {
+					$currentappname = $this->getAppNameFromState($providedState);
 				}
 
-				if (empty($currentappname))
-				{
+				if (empty($currentappname)) {
 					MoOAuthLogger::addLog('No request found for this application', 'ERROR');
-					exit("[MOOAUTH-003] : " . Text::_('LIB_MINIORANGEOAUTH_NO_REQUEST_FOUND'));
+					exit('[MOOAUTH-003] : ' . Text::_('LIB_MINIORANGEOAUTH_NO_REQUEST_FOUND'));
 				}
 
 				// Get OAuth configuration
@@ -335,9 +390,6 @@ class MoOauthClientHandler
 					$presentUpdate = date('m/d/Y H:i:s', time());
 					$previousUpdate = date('m/d/Y H:i:s', intval($ssoEff['previous_update']));
 					$dnoSsos = $ssoEff['dno_ssos'];
-					include_once JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauth' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'mo_customer_setup.php';
-					$reason = $session->get('reason');
-					MoOauthCustomer::pluginEfficiencyCheck($checkEmail, $appname, $baseUrl, $cTime, $dnoSsos, $tnoSsos, $previousUpdate, $presentUpdate, $reason);
 				}
 
 				if ($checkUser)
@@ -355,7 +407,6 @@ class MoOauthClientHandler
 
 					if ((int) $test2 >= (int) $test)
 					{
-						MoOauthCustomer::pluginEfficiencyCheck($email, $appname, $baseUrl, $cTime, $dnoSsos, $tnoSsos, $previousUpdate, $presentUpdate, "Authentication Limit Reached.");
 						$moOauthHandler->showFormattedErrorMessage(Text::_('LIB_MINIORANGEOAUTH_AUTHENTICATION_LIMIT_REACHED'));
 						MoOAuthLogger::addLog('Authentication limit reached', 'INFO');
 						exit;
@@ -381,7 +432,6 @@ class MoOauthClientHandler
 					$previousUpdate = date('m/d/Y H:i:s', intval($ssoEff['previous_update']));
 					$dnoSsos = $ssoEff['dno_ssos'];
 					$reason = "Can't create new user - " . $session->get('mo_reason');
-					MoOauthCustomer::pluginEfficiencyCheck($checkEmail, $appname, $baseUrl, $cTime, $dnoSsos, 1, $previousUpdate, $presentUpdate, $reason);
 					echo '<div style="font-family: Calibri, sans-serif; padding: 2% 5%; background-color: #f0f4f8; border: 1px solid #2E486B; border-radius: 8px; max-width: 800px; margin: 30px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                             <div style="color: #ffffff; background-color: #1F3047; padding: 20px; font-size: 22px; text-align: center; font-weight: bold; border-radius: 5px; border-bottom: 1px solid #2E486B;">
                                 ' . Text::_('LIB_MINIORANGEOAUTH_USER_AUTO_CREATION_NOT_AVAILABLE') . '
@@ -456,8 +506,18 @@ class MoOauthClientHandler
 
 		$testCookie = $input->cookie->get('mo_oauth_test');
 
-		if (isset($testCookie) && !empty($testCookie))
-		{
+		if ((string) $testCookie === '1') {
+			$testApp = (string) $input->cookie->get('mo_oauth_test_app', '');
+			$testExpires = (int) $input->cookie->get('mo_oauth_test_exp', 0);
+			$testToken = (string) $input->cookie->get('mo_oauth_test_token', '');
+
+			if (!MoOAuthUtility::verifyOAuthTestSignature($testApp, $testExpires, $testToken)) {
+				MoOAuthUtility::clearOAuthFlowCookies();
+				MoOAuthLogger::addLog('OAuth test authorization expired or invalid', 'WARNING');
+				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+			}
+
+			MoOAuthUtility::clearOAuthFlowCookies();
 			echo '<div style="font-family:Calibri;padding:0 3%;">';
 			echo '<div style="color: #3c763d;background-color: #dff0d8; padding:2%;margin-bottom:20px;text-align:center; border:1px solid #AEDB9A; font-size:18pt;">TEST SUCCESSFUL</div>
                 <div style="display:block;text-align:center;margin-bottom:4%;"><img style="width:15%;"src="' . $siteUrl . 'green_check.png"></div><br>
@@ -482,22 +542,7 @@ class MoOauthClientHandler
 				$checkEmail = $resultCustomer['contact_admin_email'];
 			}
 
-			$baseUrl = Uri::root();
 			$appname = isset($resultAttr['appname']) ? $resultAttr['appname'] : '';
-			$cTime = date('m/d/Y H:i:s', $resultCustomer['cd_plugin']);
-			$presentUpdate = date('m/d/Y H:i:s', time());
-			$previousUpdate = date('m/d/Y H:i:s', intval($resultCustomer['previous_update']));
-			$dnoSsos = $resultCustomer['dno_ssos'];
-			$reason = $session->get('mo_reason');
-
-			if (!empty($userAttributes))
-			{
-				MoOauthCustomer::pluginEfficiencyCheck($checkEmail, $appname, $baseUrl, $cTime, $dnoSsos, 1, $previousUpdate, $presentUpdate, $reason, $resultAttr['app_scope'], $resultAttr['authorize_endpoint'], $resultAttr['access_token_endpoint'], $resultAttr['user_info_endpoint'], $resultAttr['in_header_or_body'], "Successfull.");
-			}
-			else
-			{
-				 MoOauthCustomer::pluginEfficiencyCheck($checkEmail, $appname, $baseUrl, $cTime, $dnoSsos, 1, $previousUpdate, $presentUpdate, $reason, $resultAttr['app_scope'], $resultAttr['authorize_endpoint'], $resultAttr['access_token_endpoint'], $resultAttr['user_info_endpoint'], $resultAttr['in_header_or_body'], "Failed.");
-			}
 
 			self::miniOauthUpdateDb('#__miniorange_oauth_config', array('test_attribute_name' => $userAttributes), array("id" => 1));
 			$refreshUrl = Uri::root() . "administrator/index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration&moAuthAddApp=" . $resultAttr['appname'] . "&progress=step3";
@@ -609,12 +654,16 @@ class MoOauthClientHandler
 
 	public function getUserFromJoomla($email, $username)
 	{
-		// Check if email exist in database
+		if (empty($email)) {
+			return null;
+		}
+
+		// Email is the stable OAuth identity; username matching can select another account.
 		$db = self::getDBObject();
 		$query = $db->getQuery(true)
 			->select('id')
 			->from('#__users')
-			->where('email=' . $db->quote($email) . ' OR username=' . $db->quote($username));
+			->where($db->quoteName('email') . ' = ' . $db->quote($email));
 		$db->setQuery($query);
 		$checkUser = $db->loadObject();
 
@@ -683,15 +732,11 @@ class MoOauthClientHandler
 		}
 
 		$cookieData = $input->cookie->getArray();
+		$defaultRedirect = MoOAuthUtility::getDefaultPostLoginRedirectUrl();
+		$storedReturnUrl = isset($cookieData['returnurl']) ? (string) $cookieData['returnurl'] : '';
+		$redirectloginuri = MoOAuthUtility::getSafePostLoginRedirectUrl($storedReturnUrl, $defaultRedirect);
 
-		if (isset($cookieData['returnurl']))
-		{
-			$redirectloginuri = $cookieData['returnurl'];
-		}
-		else
-		{
-			$redirectloginuri = Uri::root() . 'index.php?';
-		}
+		MoOAuthUtility::clearReturnUrlCookie();
 
 		$bridgeExpires = time() + 300;
 		$sessionCookieOptions = MoOauthUtility::getSecureCookieOptions($bridgeExpires);
@@ -741,6 +786,35 @@ class MoOauthClientHandler
 		$result = self::miniOauthUpdateDb('#__session', $data, $condition);
 
 		return $result;
+	}
+
+	private function createOAuthState($appName) {
+		try {
+			$nonce = bin2hex(random_bytes(32));
+		} catch (Exception $e) {
+			$nonce = hash('sha256', uniqid((string) mt_rand(), true));
+		}
+
+		$encodedAppName = rtrim(strtr(base64_encode((string) $appName), '+/', '-_'), '=');
+
+		return $encodedAppName . '.' . $nonce;
+	}
+
+	private function getAppNameFromState($state) {
+		$stateParts = explode('.', (string) $state, 2);
+
+		if (count($stateParts) !== 2 || $stateParts[0] === '' || $stateParts[1] === '') {
+			return '';
+		}
+
+		$encodedAppName = strtr($stateParts[0], '-_', '+/');
+		$paddingLength = (4 - strlen($encodedAppName) % 4) % 4;
+		$decodedAppName = base64_decode(
+			$encodedAppName . str_repeat('=', $paddingLength),
+			true
+		);
+
+		return $decodedAppName === false ? '' : $decodedAppName;
 	}
 
 	private static function getDBObject()
