@@ -82,8 +82,21 @@ class PlgWebservicesMiniorangeoauthclient extends CMSPlugin
 
 		if (isset($queryParams['error']) && isset($queryParams['error_description']))
 		{
-			$msg = "<strong>Error: </strong> " . $queryParams['error'] . "<br>" .
-			   "<strong>Description: </strong> " . $queryParams['error_description'];
+			$errorText = $queryParams['error'];
+			$descriptionText = $queryParams['error_description'];
+
+			if (!is_scalar($errorText))
+			{
+				$errorText = '';
+			}
+
+			if (!is_scalar($descriptionText))
+			{
+				$descriptionText = '';
+			}
+
+			$msg = '<strong>Error: </strong> ' . htmlspecialchars((string) $errorText, ENT_QUOTES, 'UTF-8') . '<br>'
+				. '<strong>Description: </strong> ' . htmlspecialchars((string) $descriptionText, ENT_QUOTES, 'UTF-8');
 			echo $msg;
 			exit();
 		}

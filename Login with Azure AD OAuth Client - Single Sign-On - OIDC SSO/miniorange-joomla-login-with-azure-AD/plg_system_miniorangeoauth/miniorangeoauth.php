@@ -177,10 +177,25 @@ class PlgSystemMiniorangeoauth extends CMSPlugin
 		$app = Factory::getApplication();
 		$input = $this->getAppInput($app);
 
-		// Show Joomla blocked-user message when redirected from OAuth callback (blocked account)
-		if ($app->isClient('site') && $input->get('mo_oauth_blocked'))
+		// Show the same Joomla login messages core uses, then drop the callback flag from the URL.
+		$oauthLoginError = (string) $input->get('mo_oauth_login', '', 'cmd');
+
+		if ($app->isClient('site') && ($input->get('mo_oauth_blocked') || $oauthLoginError !== ''))
 		{
-			$app->enqueueMessage(Text::_('JERROR_NOLOGIN_BLOCKED'), 'error');
+			if ($input->get('mo_oauth_blocked'))
+			{
+				$message = Text::_('JERROR_NOLOGIN_BLOCKED');
+			}
+			elseif ($oauthLoginError === 'denied')
+			{
+				$message = Text::_('JERROR_LOGIN_DENIED');
+			}
+			else
+			{
+				$message = Text::_('JGLOBAL_AUTH_NO_USER');
+			}
+
+			$app->enqueueMessage($message, 'error');
 			$app->redirect(Route::_('index.php', false));
 
 			return;

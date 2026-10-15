@@ -481,6 +481,7 @@ function configuration($oauthApp, $appLabel)
 	$moOauthInBody   = "";
 	$ssoEnable = isset($attribute['sso_enable']) ? $attribute['sso_enable'] : '1';
 	$ssoButtonEnable = isset($attribute['sso_button_enable']) ? $attribute['sso_button_enable'] : '1';
+	$updateEmailOnSso = !empty($attribute['update_email_on_sso']);
 
 	if (isset($attribute['in_header_or_body']))
 	{
@@ -888,6 +889,19 @@ function configuration($oauthApp, $appLabel)
 								</div>
 								<div class="mo_boot_col-12 mo_boot_col-md-6 mo_boot_col-lg-8 mo_oauth_advance_setting_note">
 									<p><em><?php echo Text::_('COM_MINIORANGE_OAUTH_SSO_BUTTON_NOTE');?></em></p>
+								</div>
+							</div>
+
+							<div class="mo_boot_row mo_boot_p-3 mo_boot_d-flex mo_oauth_align-items-center mo_oauth_advance_setting_row">
+								<div class="mo_boot_col-12 mo_boot_col-md-6 mo_boot_col-lg-4 mo_boot_d-flex mo_oauth_align-items-center mo_ouath_flex-gap-3">
+									<strong class="mo_oauth_advance_setting_label"><?php echo Text::_('COM_MINIORANGE_OAUTH_SSO_UPDATE_EMAIL'); ?></strong>:
+									<div class="mo_boot_form-check mo_oauth_advance_setting_switch">
+										<input class="form-check-input" type="checkbox" value="1" name="mo_oauth_update_email"
+											   id="mo_oauth_update_email" <?php echo ($updateEmailOnSso ? 'checked' : ''); ?> />
+									</div>
+								</div>
+								<div class="mo_boot_col-12 mo_boot_col-md-6 mo_boot_col-lg-8 mo_oauth_advance_setting_note">
+									<p><em><?php echo Text::_('COM_MINIORANGE_OAUTH_SSO_UPDATE_EMAIL_NOTE');?></em></p>
 								</div>
 							</div>
 							<!-- Submit Button -->
@@ -2636,24 +2650,29 @@ function moImportAndExport($moOauthApp)
 		</div>
 
 		<div class="mo_boot_col-sm-12 mo_oauth_hightlight_white_bg mo_boot_mt-3 mo_boot_p-3">
-			 <div class="mo_boot_my-2 mo_oauth_export_import_config" >
-				<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION');?></strong><span title="<?php echo Text::_('COM_MINIORANGE_AVAILABLE_IN_PAID_PLANS_ONLY'); ?>" ><sup><img class="crown_img_small" src="<?php echo Uri::base();?>/components/com_miniorange_oauth/assets/images/crown.webp"></sup></span>
-			</div>
-			<div class="mo_boot_row">
-				<div class="mo_boot_col-sm-4">
-					<strong><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_UPLOAD_CONFIGURATION');?></strong>
-				</div>
-				<div class="mo_boot_col-sm-4">
-					<input type="file" class="mo-form-control-file d-inline" name="configuration_file" disabled="disabled">
-				</div>
+			<div class="mo_boot_my-2 mo_oauth_export_import_config">
+				<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?></strong>
 			</div>
 
-		   <div class="mo_boot_my-2">
-				<button type="button" class="oauth_blue_button" disabled>
-					<span><i class="fa-solid fa-upload"></i></span>
-				<?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?>
-				</button>
-			</div>
+			<div class="mo_boot_mb-2"><?php echo Text::_('COM_MINIORANGE_IMPORT_CONFIGURATION_TEXT'); ?></div>
+
+			<form method="post" onsubmit="return false;">
+				<div class="mo_boot_row mo_boot_mt-3">
+					<div class="mo_boot_col-sm-4">
+						<strong><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_UPLOAD_CONFIGURATION'); ?></strong>
+					</div>
+					<div class="mo_boot_col-sm-4">
+						<input type="file" class="mo-form-control-file d-inline" name="configuration_file" accept=".json,application/json" disabled>
+					</div>
+				</div>
+
+				<div class="mo_boot_my-2 mo_boot_mt-3">
+					<button type="submit" class="oauth_blue_button" disabled>
+						<span><i class="fa-solid fa-upload"></i></span>
+						<?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?>
+					</button>
+				</div>
+			</form>
 		</div>
 	</div>
 	<?php
@@ -2927,10 +2946,19 @@ function buildLogsTableRowsMarkup($logsToShow)
 	{
 		$logsData = (array) $logRecord;
 		$messData = json_decode($logsData['message'], true);
+		$logCode = '';
+		$logIssue = '';
+
+		if (is_array($messData))
+		{
+			$logCode = isset($messData['code']) ? (string) $messData['code'] : '';
+			$logIssue = isset($messData['issue']) ? (string) $messData['issue'] : '';
+		}
+
 		$html .= '<tr>'
 			. '<td class="timestamp-cell">' . $logsData['timestamp'] . '</td>'
 			. '<td class="priority-cell">' . $logsData['log_level'] . '</td>'
-			. '<td class="code-cell">' . ($messData['code'] . ' : ' . $messData['issue']) . '</td>'
+			. '<td class="code-cell">' . htmlspecialchars($logCode . ' : ' . $logIssue, ENT_QUOTES, 'UTF-8') . '</td>'
 			. '<td class="path-cell">' . ($logsData['file'] . ' ' . Text::_('COM_MINIORANGE_OAUTH_LOGS_IN_FUNCTION') . ' '
 			. $logsData['function_call'] . ' ' . Text::_('COM_MINIORANGE_OAUTH_LOGS_AT_LINE') . ' ' . $logsData['line_number']) . '</td>'
 			. '</tr>';
@@ -2982,7 +3010,8 @@ function buildAttributeSelectMarkup($attributesNames, $selectedAttr, $fieldName,
 
 			if ($value != '')
 			{
-				echo '<option ' . $checked . " value='" . $value . "'>" . $value . '</option>';
+				$safeAttribute = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+				echo '<option ' . $checked . ' value="' . $safeAttribute . '">' . $safeAttribute . '</option>';
 			}
 		}
 

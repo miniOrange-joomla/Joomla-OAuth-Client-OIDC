@@ -153,7 +153,7 @@ class Mo_OAuth_Hanlder
 		if (empty($idToken) && empty($accessToken))
 		{
 			MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-			$this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING') . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING_SOLUTION'));
+			$this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING') . "\n" . $this->htmlToPlainText(Text::_('COM_MINIORANGE_OAUTH_ACCESS_ID_TOKEN_MISSING_SOLUTION')));
 			$session->set('mo_reason', 'Invalid response received from OAuth Provider. Contact your administrator for more details.');
 		}
 
@@ -176,7 +176,7 @@ class Mo_OAuth_Hanlder
 		}
 
 		MoOAuthLogger::addLog('Error Invalid Response', 'ERROR');
-		$this->setError('[MOOAUTH-009] : ' . Text::_('COM_MINIORANGE_OAUTH_INVALID_ID_TOKEN') . $idToken);
+		$this->setError('[MOOAUTH-009] : ' . $this->htmlToPlainText(Text::_('COM_MINIORANGE_OAUTH_INVALID_ID_TOKEN')) . $idToken);
 		$session->set('mo_reason', ' Invalid response received.<br><b>Id_token : </b>' . $idToken);
 
 		return false;
@@ -271,11 +271,25 @@ class Mo_OAuth_Hanlder
 	private function handleCurlNotInstalled()
 	{
 		$session = Factory::getSession();
-		$errorMessage = Text::_('COM_MINIORANGE_OAUTH_PHP_CURL') . ' [<a href="https://www.php.net/manual/en/curl.installation.php" target="_blank">' . Text::_('COM_MINIORANGE_OAUTH_LEARN_MORE') . '</a>]';
 
 		MoOAuthLogger::addLog('PHP cURL extension is not installed or disabled.', 'CRITICAL', 'MOOAUTH-CURL');
-		$this->setError($errorMessage);
 		$session->set('mo_reason', Text::_('COM_MINIORANGE_OAUTH_PHP_CURL'));
+		$this->showFormattedErrorMessage(
+			Text::_('COM_MINIORANGE_OAUTH_PHP_CURL'),
+			'',
+			'https://www.php.net/manual/en/curl.installation.php',
+			Text::_('COM_MINIORANGE_OAUTH_LEARN_MORE')
+		);
+		echo Text::_('COM_MINIORANGE_OAUTH_LOGS_SUGGESTION');
+		exit;
+	}
+
+	private function htmlToPlainText(string $html): string
+	{
+		$text = preg_replace('/<br\s*\/?>/i', "\n", $html);
+		$text = html_entity_decode(strip_tags((string) $text), ENT_QUOTES, 'UTF-8');
+
+		return trim((string) $text);
 	}
 
 	public function setError($error)
@@ -302,24 +316,32 @@ class Mo_OAuth_Hanlder
 
 		if (is_array($this->error))
 		{
-			print_r($this->error);
+			$errorText = print_r($this->error, true);
 		}
 		else
 		{
-			echo ($this->error);
+			$errorText = (string) $this->error;
 		}
 
+		echo nl2br(htmlspecialchars($errorText, ENT_QUOTES, 'UTF-8'), false);
 		echo Text::_('COM_MINIORANGE_OAUTH_LOGS_SUGGESTION');
 		exit;
 	}
 
-	public function showFormattedErrorMessage(string $errorMessage, string $description = '')
+	public function showFormattedErrorMessage(string $errorMessage, string $description = '', string $linkUrl = '', string $linkText = '')
 	{
-		$body = "<p style='margin:0 0 10px; font-weight:bold; font-size:16px;'>" . htmlspecialchars($errorMessage) . "</p>";
+		$body = "<p style='margin:0 0 10px; font-weight:bold; font-size:16px;'>" . htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8');
 
-		if (!empty($description))
+		if ($linkUrl !== '' && $linkText !== '')
 		{
-			$body .= "<p style='margin:5px 0;'>" . nl2br(htmlspecialchars($description)) . "</p>";
+			$body .= " [<a href='" . htmlspecialchars($linkUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>" . htmlspecialchars($linkText, ENT_QUOTES, 'UTF-8') . '</a>]';
+		}
+
+		$body .= '</p>';
+
+		if ($description !== '')
+		{
+			$body .= "<p style='margin:5px 0;'>" . nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8'), false) . "</p>";
 		}
 
 		echo "

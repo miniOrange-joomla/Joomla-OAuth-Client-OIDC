@@ -25,6 +25,7 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 		'callcontactus',
 		'contactus',
 		'exportconfiguration',
+		'importconfiguration',
 		'mooauthproxyconfigreset',
 		'proxyconfig',
 		'proxyconfigreset',
@@ -566,37 +567,125 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 	public function exportConfiguration()
 	{
 		$appDetails = $this->retrieveAttributes('#__miniorange_oauth_config');
-		$customerDetails = $this->retrieveAttributes('#__miniorange_oauth_customer');
-		$customapp = $appDetails['appname'];
-		$clientid = $appDetails['client_id'];
-		$clientsecret = $appDetails['client_secret'];
 
-		if ($clientid == '' && $clientsecret == '')
+		if (!is_array($appDetails) || $appDetails === [])
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_EMPTY'), 'error');
+
+			return;
+		}
+
+		$clientId = isset($appDetails['client_id']) ? trim((string) $appDetails['client_id']) : '';
+		$clientSecret = isset($appDetails['client_secret']) ? trim((string) $appDetails['client_secret']) : '';
+
+		if ($clientId === '' && $clientSecret === '')
 		{
 			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=overview', Text::_('COM_MINIORANGE_OAUTH_ENTER_CLIENT_ID_BEFORE_DOWNLOADING'), 'error');
 
 			return;
 		}
 
-		$pluginConfiguration = array();
-		array_push($pluginConfiguration, $appDetails, $customerDetails);
+		unset($appDetails['id']);
 
-		$clientSecret = $pluginConfiguration[0]['client_secret'];
-		$ciphering = "AES-128-CTR";
-		$encryptionIv = '4488882453112245';
-		$encryptionKey = "minOrangeOauth";
-		$options = 0;
-		$encreptedClientSecret = openssl_encrypt($clientSecret, $ciphering, $encryptionKey, $options, $encryptionIv);
+		$configurationJson = json_encode($appDetails, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-		$pluginConfiguration[0]['client_secret'] = $encreptedClientSecret;
-		$filecontentd = json_encode($pluginConfiguration, JSON_PRETTY_PRINT);
+		if (!is_string($configurationJson) || $configurationJson === '')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_FAILED'), 'error');
 
-		header('Content-Disposition: attachment; filename=oauth-client.json');
-		header('Content-Type: application/json');
-		print_r($filecontentd);
+			return;
+		}
 
-		$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration&moAuthAddApp=' . $customapp, Text::_('COM_MINIORANGE_OAUTH_PLUGIN_CONFIGURATION_DOWNLOADED_SUCCESSFULLY'));
+		$exportFile = [
+			'format'        => 'miniorange-oauth-client',
+			'version'       => 1,
+			'encoding'      => 'base64',
+			'configuration' => base64_encode($configurationJson),
+		];
+
+		$fileContent = json_encode($exportFile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		if (!is_string($fileContent) || $fileContent === '')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_FAILED'), 'error');
+
+			return;
+		}
+
+		header('Content-Type: application/json; charset=utf-8');
+		header('Content-Disposition: attachment; filename="oauth-client.json"');
+		header('Content-Length: ' . strlen($fileContent));
+		header('Cache-Control: no-store');
+		header('Pragma: no-cache');
+		echo $fileContent;
 		exit;
+	}
+
+	public function importConfiguration()
+	{
+		$app = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$file = $input->files->get('configuration_file', null, 'raw');
+
+		if (!is_array($file) || !isset($file['error']))
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_REQUIRED'), 'error');
+
+			return;
+		}
+
+		$uploadError = (int) $file['error'];
+
+		if ($uploadError === UPLOAD_ERR_NO_FILE)
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_REQUIRED'), 'error');
+
+			return;
+		}
+
+		if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE)
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_TOO_LARGE'), 'error');
+
+			return;
+		}
+
+		if ($uploadError !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name']))
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_INVALID'), 'error');
+
+			return;
+		}
+
+		$extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+		$fileSize = isset($file['size']) ? (int) $file['size'] : 0;
+
+		if ($extension !== 'json' || $fileSize <= 0 || $fileSize > 2097152)
+		{
+			$message = $fileSize > 2097152 ? Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_TOO_LARGE') : Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_INVALID');
+			$this->redirectToConfiguration($message, 'error');
+
+			return;
+		}
+
+		$contents = file_get_contents($file['tmp_name']);
+		$configuration = $this->decodeExportedConfiguration($contents);
+
+		if ($configuration === null)
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FILE_INVALID'), 'error');
+
+			return;
+		}
+
+		if (!$this->saveImportedOAuthConfiguration($configuration))
+		{
+			$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_FAILED'), 'error');
+
+			return;
+		}
+
+		$this->redirectToConfiguration(Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION_SUCCESS'));
 	}
 
 	protected function retrieveAttributes($tablename)
@@ -679,11 +768,13 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 
 		$ssoStatus = isset($post['mo_oauth_enable_sso']) ? 1 : 0;
 		$moOauthEnableSsoButton = isset($post['mo_oauth_enable_sso_button']) ? 1 : 0;
+		$updateEmailOnSso = isset($post['mo_oauth_update_email']) ? 1 : 0;
 
-		$updateFieldsArray = array(
+		$updateFieldsArray = [
 			'sso_enable' => $ssoStatus,
-			'sso_button_enable' => $moOauthEnableSsoButton
-		);
+			'sso_button_enable' => $moOauthEnableSsoButton,
+			'update_email_on_sso' => $updateEmailOnSso,
+		];
 
 		$messg = Text::_('COM_MINIORANGE_OAUTH_SSO_SETTING_SAVED_SUCCESSFULLY');
 
@@ -810,6 +901,206 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 
 		fclose($output);
 		exit;
+	}
+
+	private function decodeExportedConfiguration($contents)
+	{
+		if (!is_string($contents) || $contents === '' || strlen($contents) > 2097152)
+		{
+			return null;
+		}
+
+		$exportFile = json_decode($contents, true);
+
+		if (!is_array($exportFile) || $this->isListArray($exportFile))
+		{
+			return null;
+		}
+
+		if (
+			!isset($exportFile['format'], $exportFile['version'], $exportFile['encoding'], $exportFile['configuration'])
+			|| $exportFile['format'] !== 'miniorange-oauth-client'
+			|| ($exportFile['version'] !== 1 && $exportFile['version'] !== '1')
+			|| $exportFile['encoding'] !== 'base64'
+			|| !is_string($exportFile['configuration'])
+			|| $exportFile['configuration'] === ''
+		) {
+			return null;
+		}
+
+		$decoded = base64_decode($exportFile['configuration'], true);
+
+		if ($decoded === false || $decoded === '' || strlen($decoded) > 2097152)
+		{
+			return null;
+		}
+
+		$configuration = json_decode($decoded, true);
+
+		if (!is_array($configuration) || $configuration === [] || $this->isListArray($configuration))
+		{
+			return null;
+		}
+
+		return $configuration;
+	}
+
+	private function saveImportedOAuthConfiguration($configuration)
+	{
+		$db = self::getDBObject();
+		$columnTypes = $db->getTableColumns('#__miniorange_oauth_config');
+
+		if (!is_array($columnTypes) || $columnTypes === [])
+		{
+			return false;
+		}
+
+		$columnsByName = [];
+
+		foreach ($columnTypes as $name => $type)
+		{
+			$columnsByName[strtolower((string) $name)] = [
+				'name' => (string) $name,
+				'type' => strtolower((string) $type),
+			];
+		}
+
+		$assignments = [];
+		$insertColumns = [$db->quoteName('id')];
+		$insertValues = ['1'];
+
+		foreach ($configuration as $name => $value)
+		{
+			$lookup = strtolower((string) $name);
+
+			if ($lookup === 'id' || !isset($columnsByName[$lookup]))
+			{
+				continue;
+			}
+
+			if (is_array($value) || is_object($value))
+			{
+				return false;
+			}
+
+			$column = $columnsByName[$lookup];
+			$normalized = $this->normalizeImportedValue($value);
+
+			if ($normalized === false)
+			{
+				return false;
+			}
+
+			if ($this->isIntegerColumn($column['type']))
+			{
+				if ($normalized === null || $normalized === '')
+				{
+					$normalized = '0';
+				}
+				elseif (!is_numeric($normalized))
+				{
+					return false;
+				}
+			}
+
+			$sqlValue = $normalized === null ? 'NULL' : $db->quote($normalized);
+			$assignments[] = $db->quoteName($column['name']) . ' = ' . $sqlValue;
+			$insertColumns[] = $db->quoteName($column['name']);
+			$insertValues[] = $sqlValue;
+		}
+
+		if ($assignments === [])
+		{
+			return false;
+		}
+
+		$query = $db->getQuery(true)
+			->select('COUNT(*)')
+			->from($db->quoteName('#__miniorange_oauth_config'))
+			->where($db->quoteName('id') . ' = 1');
+		$db->setQuery($query);
+		$exists = (int) $db->loadResult() > 0;
+
+		$query = $db->getQuery(true);
+
+		if ($exists)
+		{
+			$query->update($db->quoteName('#__miniorange_oauth_config'))
+				->set($assignments)
+				->where($db->quoteName('id') . ' = 1');
+		}
+		else
+		{
+			$query->insert($db->quoteName('#__miniorange_oauth_config'))
+				->columns($insertColumns)
+				->values(implode(',', $insertValues));
+		}
+
+		try
+		{
+			$db->setQuery($query);
+			$db->execute();
+		}
+		catch (RuntimeException $exception)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	private function normalizeImportedValue($value)
+	{
+		if (is_bool($value))
+		{
+			return $value ? '1' : '0';
+		}
+
+		if (is_int($value))
+		{
+			return (string) $value;
+		}
+
+		if (is_float($value))
+		{
+			if (!is_finite($value))
+			{
+				return false;
+			}
+
+			return (string) $value;
+		}
+
+		if (is_string($value) || $value === null)
+		{
+			return $value;
+		}
+
+		return false;
+	}
+
+	private function isIntegerColumn($type)
+	{
+		return strpos((string) $type, 'int') !== false;
+	}
+
+	private function isListArray($value)
+	{
+		if (!is_array($value) || $value === [])
+		{
+			return false;
+		}
+
+		return array_keys($value) === range(0, count($value) - 1);
+	}
+
+	private function redirectToConfiguration($message, $messageType = null)
+	{
+		$this->setRedirect(
+			'index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration',
+			$message,
+			$messageType
+		);
 	}
 
 	private static function getDBObject()

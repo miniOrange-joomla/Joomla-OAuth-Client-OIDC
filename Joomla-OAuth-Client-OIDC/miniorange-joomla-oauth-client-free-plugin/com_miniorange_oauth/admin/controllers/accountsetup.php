@@ -566,36 +566,57 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 	public function exportConfiguration()
 	{
 		$appDetails = $this->retrieveAttributes('#__miniorange_oauth_config');
-		$customerDetails = $this->retrieveAttributes('#__miniorange_oauth_customer');
-		$customapp = $appDetails['appname'];
-		$clientid = $appDetails['client_id'];
-		$clientsecret = $appDetails['client_secret'];
 
-		if ($clientid == '' && $clientsecret == '')
+		if (!is_array($appDetails) || $appDetails === [])
 		{
-			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=overview', Text::_('COM_MINIORANGE_OAUTH_ENTER_CLIENT_ID_BEFORE_DOWNLOADING'), 'error');
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_EMPTY'), 'error');
 
 			return;
 		}
 
-		$pluginConfiguration = array();
-		array_push($pluginConfiguration, $appDetails, $customerDetails);
+		$clientId = isset($appDetails['client_id']) ? trim((string) $appDetails['client_id']) : '';
+		$clientSecret = isset($appDetails['client_secret']) ? trim((string) $appDetails['client_secret']) : '';
 
-		$clientSecret = $pluginConfiguration[0]['client_secret'];
-		$ciphering = "AES-128-CTR";
-		$encryptionIv = '4488882453112245';
-		$encryptionKey = "minOrangeOauth";
-		$options = 0;
-		$encreptedClientSecret = openssl_encrypt($clientSecret, $ciphering, $encryptionKey, $options, $encryptionIv);
+		if ($clientId === '' && $clientSecret === '')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_ENTER_CLIENT_ID_BEFORE_DOWNLOADING'), 'error');
 
-		$pluginConfiguration[0]['client_secret'] = $encreptedClientSecret;
-		$filecontentd = json_encode($pluginConfiguration, JSON_PRETTY_PRINT);
+			return;
+		}
 
-		header('Content-Disposition: attachment; filename=oauth-client.json');
-		header('Content-Type: application/json');
-		print_r($filecontentd);
+		unset($appDetails['id']);
 
-		$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration&moAuthAddApp=' . $customapp, Text::_('COM_MINIORANGE_OAUTH_PLUGIN_CONFIGURATION_DOWNLOADED_SUCCESSFULLY'));
+		$configurationJson = json_encode($appDetails, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+		if (!is_string($configurationJson) || $configurationJson === '')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_FAILED'), 'error');
+
+			return;
+		}
+
+		$exportFile = [
+			'format'        => 'miniorange-oauth-client',
+			'version'       => 1,
+			'encoding'      => 'base64',
+			'configuration' => base64_encode($configurationJson),
+		];
+
+		$fileContent = json_encode($exportFile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		if (!is_string($fileContent) || $fileContent === '')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_EXPORT_FAILED'), 'error');
+
+			return;
+		}
+
+		header('Content-Type: application/json; charset=utf-8');
+		header('Content-Disposition: attachment; filename="oauth-client.json"');
+		header('Content-Length: ' . strlen($fileContent));
+		header('Cache-Control: no-store');
+		header('Pragma: no-cache');
+		echo $fileContent;
 		exit;
 	}
 
@@ -679,11 +700,13 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 
 		$ssoStatus = isset($post['mo_oauth_enable_sso']) ? 1 : 0;
 		$moOauthEnableSsoButton = isset($post['mo_oauth_enable_sso_button']) ? 1 : 0;
+		$updateEmailOnSso = isset($post['mo_oauth_update_email']) ? 1 : 0;
 
-		$updateFieldsArray = array(
+		$updateFieldsArray = [
 			'sso_enable' => $ssoStatus,
-			'sso_button_enable' => $moOauthEnableSsoButton
-		);
+			'sso_button_enable' => $moOauthEnableSsoButton,
+			'update_email_on_sso' => $updateEmailOnSso,
+		];
 
 		$messg = Text::_('COM_MINIORANGE_OAUTH_SSO_SETTING_SAVED_SUCCESSFULLY');
 

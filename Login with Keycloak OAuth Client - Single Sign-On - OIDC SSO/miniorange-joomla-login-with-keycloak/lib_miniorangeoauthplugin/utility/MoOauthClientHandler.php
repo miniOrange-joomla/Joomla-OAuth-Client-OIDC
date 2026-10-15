@@ -12,7 +12,9 @@ defined('_JEXEC') or die('Restricted access');
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Mail\MailHelper;
 use Joomla\CMS\Router\Route;
+use Joomla\CMS\String\PunycodeHelper;
 use Joomla\CMS\Uri\Uri;
 use Joomla\CMS\Version;
 use Joomla\CMS\User\User;
@@ -374,15 +376,6 @@ class MoOauthClientHandler
 						'dno_ssos' => 1,
 						'tno_ssos' => $tnoSsos,
 					);
-					$conditions = array('id' => '1');
-					$result = self::miniOauthUpdateDb('#__miniorange_oauth_customer', $fields, $conditions);
-					$dVar = new JConfig;
-					$checkEmail = $dVar->mailfrom;
-
-					if (isset($ssoEff['contact_admin_emiail']) && $ssoEff['contact_admin_emiail'] != null)
-					{
-						$checkEmail = $ssoEff['contact_admin_emiail'];
-					}
 
 					$baseUrl = Uri::root();
 					$appname = '';
@@ -416,48 +409,9 @@ class MoOauthClientHandler
 				}
 				else
 				{
-					include_once JPATH_ADMINISTRATOR . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauth' . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'mo_customer_setup.php';
-					$dVar = new JConfig;
-					$checkEmail = $dVar->mailfrom;
-
-					if (isset($ssoEff['contact_admin_emiail']) && $ssoEff['contact_admin_emiail'] != null)
-					{
-							$checkEmail = $ssoEff['contact_admin_emiail'];
-					}
-
-					$baseUrl = Uri::root();
-					$appname = '';
-					$cTime = date('m/d/Y H:i:s', $ssoEff['cd_plugin']);
-					$presentUpdate = date('m/d/Y H:i:s', time());
-					$previousUpdate = date('m/d/Y H:i:s', intval($ssoEff['previous_update']));
-					$dnoSsos = $ssoEff['dno_ssos'];
-					$reason = "Can't create new user - " . $session->get('mo_reason');
-					echo '<div style="font-family: Calibri, sans-serif; padding: 2% 5%; background-color: #f0f4f8; border: 1px solid #2E486B; border-radius: 8px; max-width: 800px; margin: 30px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <div style="color: #ffffff; background-color: #1F3047; padding: 20px; font-size: 22px; text-align: center; font-weight: bold; border-radius: 5px; border-bottom: 1px solid #2E486B;">
-                                ' . Text::_('LIB_MINIORANGEOAUTH_USER_AUTO_CREATION_NOT_AVAILABLE') . '
-                            </div>
-                            <div style="color: #1F3047; font-size: 16px; line-height: 1.6; padding: 20px;">
-                                ' . Text::_('LIB_MINIORANGEOAUTH_USER_AUTO_CREATION_NOT_AVAILABLE_REASON_CAUSE_SOLUTION') . '
-                            </div>
-                            <div style="text-align:center; margin-top: 10px;">
-                                <a href="https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc#pricing"
-                                   style="background-color: #2E486B; color: white; padding: 12px 25px; font-size: 16px; text-decoration: none; border-radius: 5px;" target="_blank">
-                                   ' . Text::_('LIB_MINIORANGEOAUTH_UPGRADE_PLUGIN') . '
-                                </a>
-                            </div>
-                        </div>
-                        <br>';
-
-					$homeLink = Uri::root();
-					echo '<div style="text-align:center; margin-top: 20px;">
-                            <a href="' . $homeLink . '"
-                               style="background-color: #1F3047; color: white; padding: 10px 20px; font-size: 16px; text-decoration: none; border-radius: 5px;">
-                               ' . Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE') . '
-                            </a>
-                          </div>';
-
-					MoOAuthLogger::addLog('Auto creation not available', 'INFO');
-					exit;
+					// Free plan does not create accounts. Existing users can still sign in with SSO.
+					MoOAuthLogger::addLog('OAuth login user not found', 'INFO');
+					$this->showFreePlanUserCreationNotice();
 				}
 			}
 			catch (Exception $e)
@@ -518,10 +472,18 @@ class MoOauthClientHandler
 			}
 
 			MoOAuthUtility::clearOAuthFlowCookies();
+			$helloEmail = $email;
+
+			if (!is_scalar($helloEmail) && $helloEmail !== null)
+			{
+				$helloEmail = '';
+			}
+
+			$helloEmail = htmlspecialchars((string) $helloEmail, ENT_QUOTES, 'UTF-8');
 			echo '<div style="font-family:Calibri;padding:0 3%;">';
 			echo '<div style="color: #3c763d;background-color: #dff0d8; padding:2%;margin-bottom:20px;text-align:center; border:1px solid #AEDB9A; font-size:18pt;">TEST SUCCESSFUL</div>
                 <div style="display:block;text-align:center;margin-bottom:4%;"><img style="width:15%;"src="' . $siteUrl . 'green_check.png"></div><br>
-                <span style="font-size:14pt;"><b>Hello, ' . $email . '</b>,<br/> </span><br/>
+                <span style="font-size:14pt;"><b>Hello, ' . $helloEmail . '</b>,<br/> </span><br/>
                 <table style="border-collapse:collapse;border-spacing:0; table-layout:fixed; display:table;width:100%; font-size:14pt;background-color:#EDEDED;">
                 <tr style="text-align:center;"><td style="font-weight:bold;border:2px solid #949090;padding:2%;">ATTRIBUTE NAME</td><td style="font-weight:bold;padding:2%;border:2px solid #949090; word-wrap:break-word;">ATTRIBUTE VALUE</td></tr>';
 
@@ -533,14 +495,6 @@ class MoOauthClientHandler
 			self::testattrmappingconfig("", $resourceOwner);
 			echo "</table> <br><br>";
 			$userAttributes = $this->attributesNames;
-
-			$dVar = new JConfig;
-			$checkEmail = $dVar->mailfrom;
-
-			if (isset($resultCustomer['contact_admin_email']) && $resultCustomer['contact_admin_email'] != null)
-			{
-				$checkEmail = $resultCustomer['contact_admin_email'];
-			}
 
 			$appname = isset($resultAttr['appname']) ? $resultAttr['appname'] : '';
 
@@ -572,6 +526,8 @@ class MoOauthClientHandler
 			exit;
 		}
 
+		$name = '';
+
 		if (!empty($nameAttr))
 		{
 			$name = $this->getnestedattribute($resourceOwner, $nameAttr);
@@ -590,7 +546,21 @@ class MoOauthClientHandler
 			exit('[MOOAUTH-008] : Email attribute is not received.');
 		}
 
-		return array($email,$name);
+		$name = $this->normalizeLoginUsername($name);
+
+		if ($name === null)
+		{
+			$session->set('mo_reason', 'Username not received. Check your Attribute Mapping configuration.');
+			echo '<div style="font-family:Calibri;padding:0 3%;"><div style="color: #a94442;background-color: #f2dede;padding: 15px;margin-bottom: 20px;text-align:center;border:1px solid #E6B3B2;font-size:18pt;"> ERROR</div>
+                    <div style="color: #a94442;font-size:14pt; margin-bottom:20px;"><p>' . Text::_('LIB_MINIORANGEOAUTH_USERNAME_NOT_RECEIVED') . '</p>
+                    <p>' . Text::_('LIB_MINIORANGEOAUTH_USERNAME_MISSING_WARNING') . '</p></div></div><br>';
+			$homeLink = Uri::root();
+			echo '<p align="center"><a href=' . $homeLink . ' type="button" style="color: white; background: #185b91; padding: 10px 20px;">' . Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE') . '</a><p>';
+			MoOAuthLogger::addLog('username not received', 'ERROR');
+			exit('[MOOAUTH-009] : Username attribute is not received.');
+		}
+
+		return array($email, $name);
 	}
 
 	public function testattrmappingconfig($nestedprefix, $resourceOwnerDetails)
@@ -612,10 +582,10 @@ class MoOauthClientHandler
 
 				if (!empty($nestedprefix))
 				{
-					echo $nestedprefix;
+					echo htmlspecialchars((string) $nestedprefix, ENT_QUOTES, 'UTF-8');
 				}
 
-				echo $key . "</td><td style='padding:2%;border:2px solid #949090; word-wrap:break-word;'>" . $resource . "</td></tr>";
+				echo htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8') . "</td><td style='padding:2%;border:2px solid #949090; word-wrap:break-word;'>" . htmlspecialchars((string) $resource, ENT_QUOTES, 'UTF-8') . "</td></tr>";
 				$this->attributesNames .= $nestedprefix . $key . ',';
 			}
 		}
@@ -654,20 +624,48 @@ class MoOauthClientHandler
 
 	public function getUserFromJoomla($email, $username)
 	{
-		if (empty($email)) {
+		$loginUsername = $this->normalizeLoginUsername($username);
+
+		if ($loginUsername === null)
+		{
 			return null;
 		}
 
-		// Email is the stable OAuth identity; username matching can select another account.
+		// Find the existing Joomla account by username. $username is the value of the mapped username attribute.
+		// quote() is used instead of bind() so Joomla 3, 4, 5, and 6 all run this query.
 		$db = self::getDBObject();
 		$query = $db->getQuery(true)
-			->select('id')
-			->from('#__users')
-			->where($db->quoteName('email') . ' = ' . $db->quote($email));
-		$db->setQuery($query);
-		$checkUser = $db->loadObject();
+			->select($db->quoteName('id'))
+			->from($db->quoteName('#__users'))
+			->where($db->quoteName('username') . ' = ' . $db->quote($loginUsername));
+		$db->setQuery($query, 0, 1);
+		$userId = (int) $db->loadResult();
 
-		return $checkUser;
+		if ($userId < 1)
+		{
+			return null;
+		}
+
+		return (object) ['id' => $userId];
+	}
+
+	private function normalizeLoginUsername($username)
+	{
+		if (is_bool($username) || !is_scalar($username))
+		{
+			return null;
+		}
+
+		$loginUsername = trim((string) $username);
+		// Same characters core strips with the USERNAME input filter before it searches.
+		$loginUsername = preg_replace('/[\x00-\x1F\x7F<>"\'%&]/', '', $loginUsername);
+
+		if (!is_string($loginUsername) || $loginUsername === '')
+		{
+			return null;
+		}
+
+		return $loginUsername;
 	}
 
 	public function loginCurrentUser($checkUser, $username = '', $email = '')
@@ -680,8 +678,9 @@ class MoOauthClientHandler
 		);
 
 		$user = User::getInstance($checkUser->id);
+		$failure = $this->getOAuthLoginFailure($user);
 
-		if ($user->block == 1)
+		if ($failure === 'blocked')
 		{
 			// Redirect to site login with flag; system plugin will show Joomla message and clean URL
 			$loginUrl = Uri::root() . 'index.php?option=com_users&view=login&mo_oauth_blocked=1';
@@ -690,7 +689,14 @@ class MoOauthClientHandler
 			return;
 		}
 
-		$this->updateCurrentUserNameOrEmail($user->id, $username, $email);
+		if ($failure !== '')
+		{
+			MoOAuthLogger::addLog('OAuth login ' . $failure, 'INFO');
+			$this->redirectOAuthLoginFailure($failure);
+
+			return;
+		}
+
 		$session = Factory::getSession();
 
 		// Get current session vars
@@ -722,6 +728,18 @@ class MoOauthClientHandler
 
 		$user->setLastVisit();
 
+		if (!empty($appdata['update_email_on_sso']))
+		{
+			try
+			{
+				$this->updateMappedUserEmail((int) $checkUser->id, $email);
+			}
+			catch (Exception $emailUpdateException)
+			{
+				MoOAuthLogger::addLog('SSO email update failed: ' . $emailUpdateException->getMessage(), 'WARNING');
+			}
+		}
+
 		if (method_exists($app, 'getInput'))
 		{
 			$input = $app->getInput();
@@ -748,6 +766,243 @@ class MoOauthClientHandler
 		setcookie('mo_oauth_sig', $bridgeSignature, $sessionCookieOptions);
 
 		$app->redirect($redirectloginuri);
+	}
+
+	private function getOAuthLoginFailure($user)
+	{
+		if (empty($user) || empty($user->id))
+		{
+			return 'nouser';
+		}
+
+		if ((int) $user->block === 1)
+		{
+			return 'blocked';
+		}
+
+		if (!$user->authorise('core.login.site'))
+		{
+			return 'denied';
+		}
+
+		return '';
+	}
+
+	private function showFreePlanUserCreationNotice()
+	{
+		MoOAuthUtility::clearOAuthFlowCookies();
+
+		$app = Factory::getApplication();
+		$homeUrl = htmlspecialchars(Uri::root(), ENT_QUOTES, 'UTF-8');
+		$learnMoreUrl = 'https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc';
+		$upgradeUrl = 'https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc#pricing';
+		$learnMoreUrl = htmlspecialchars($learnMoreUrl, ENT_QUOTES, 'UTF-8');
+		$upgradeUrl = htmlspecialchars($upgradeUrl, ENT_QUOTES, 'UTF-8');
+		$title = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_USER_AUTO_CREATION_NOT_AVAILABLE'), ENT_QUOTES, 'UTF-8');
+		$existingUser = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_FREE_PLAN_SSO_EXISTING_USER_ONLY'), ENT_QUOTES, 'UTF-8');
+		$upgrade = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_FREE_PLAN_UPGRADE_MESSAGE'), ENT_QUOTES, 'UTF-8');
+		$contact = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_FREE_PLAN_CONTACT_ADMIN'), ENT_QUOTES, 'UTF-8');
+		$learnMore = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_FOR_MORE_INFORMATION'), ENT_QUOTES, 'UTF-8');
+		$backLabel = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE'), ENT_QUOTES, 'UTF-8');
+		$upgradeLabel = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_UPGRADE_PLUGIN'), ENT_QUOTES, 'UTF-8');
+		$planLabel = htmlspecialchars(Text::_('LIB_MINIORANGEOAUTH_FREE_PLAN'), ENT_QUOTES, 'UTF-8');
+
+		if (!headers_sent())
+		{
+			header('Content-Type: text/html; charset=utf-8');
+		}
+
+		echo '<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>' . $title . '</title>
+<style>
+body {
+	margin: 0;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 16px;
+	background: #f4f7fb;
+	color: #1f3047;
+	font-family: Arial, Helvetica, sans-serif;
+}
+.mo-notice {
+	width: 100%;
+	max-width: 640px;
+	background: #fff;
+	border: 1px solid #d7e2ef;
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(31, 48, 71, 0.08);
+	padding: 32px 28px;
+	box-sizing: border-box;
+}
+.mo-notice__badge {
+	display: inline-block;
+	margin: 0 0 12px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: #e8f2fb;
+	color: #185b91;
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.mo-notice h1 {
+	margin: 0 0 16px;
+	font-size: 24px;
+	line-height: 1.3;
+}
+.mo-notice p {
+	margin: 0 0 14px;
+	font-size: 16px;
+	line-height: 1.6;
+}
+.mo-notice__contact {
+	margin: 18px 0 24px;
+	padding: 14px 16px;
+	background: #f7fafc;
+	border-left: 4px solid #185b91;
+	border-radius: 6px;
+}
+.mo-notice__contact p {
+	margin: 0;
+}
+.mo-notice__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+}
+.mo-notice__button {
+	display: inline-block;
+	padding: 12px 18px;
+	border-radius: 6px;
+	text-decoration: none;
+	font-size: 15px;
+	font-weight: bold;
+}
+.mo-notice__button--primary {
+	background: #185b91;
+	color: #fff;
+}
+.mo-notice__button--secondary {
+	background: #fff;
+	color: #185b91;
+	border: 1px solid #185b91;
+}
+.mo-notice__more {
+	margin-top: 18px;
+	font-size: 14px;
+}
+.mo-notice__more a {
+	color: #185b91;
+}
+</style>
+</head>
+<body>
+<div class="mo-notice">
+<p class="mo-notice__badge">' . $planLabel . '</p>
+<h1>' . $title . '</h1>
+<p>' . $existingUser . '</p>
+<p>' . $upgrade . '</p>
+<div class="mo-notice__contact"><p>' . $contact . '</p></div>
+<div class="mo-notice__actions">
+<a class="mo-notice__button mo-notice__button--primary" href="' . $homeUrl . '">' . $backLabel . '</a>
+<a class="mo-notice__button mo-notice__button--secondary" href="' . $upgradeUrl . '" target="_blank" rel="noopener noreferrer">' . $upgradeLabel . '</a>
+</div>
+<p class="mo-notice__more"><a href="' . $learnMoreUrl . '" target="_blank" rel="noopener noreferrer">' . $learnMore . '</a></p>
+</div>
+</body>
+</html>';
+
+		$app->close();
+	}
+
+	private function redirectOAuthLoginFailure($reason)
+	{
+		$allowed = ['nouser', 'denied'];
+
+		if (!in_array($reason, $allowed, true))
+		{
+			$reason = 'nouser';
+		}
+
+		$app = Factory::getApplication();
+		$loginUrl = Uri::root() . 'index.php?option=com_users&view=login&mo_oauth_login=' . $reason;
+		$app->redirect($loginUrl);
+	}
+
+	private function updateMappedUserEmail($userId, $email)
+	{
+		if (!is_scalar($email))
+		{
+			MoOAuthLogger::addLog('SSO email update skipped because the mapped email is not a single value', 'WARNING');
+
+			return;
+		}
+
+		$email = trim((string) $email);
+
+		if (class_exists(PunycodeHelper::class))
+		{
+			$email = PunycodeHelper::emailToPunycode($email);
+		}
+
+		if ($email === '' || strlen($email) > 100 || !MailHelper::isEmailAddress($email))
+		{
+			MoOAuthLogger::addLog('SSO email update skipped because the mapped email is empty or invalid', 'WARNING');
+
+			return;
+		}
+
+		$db = self::getDBObject();
+		$userQuery = $db->getQuery(true)
+			->select($db->quoteName(['email', 'block', 'activation']))
+			->from($db->quoteName('#__users'))
+			->where($db->quoteName('id') . ' = ' . (int) $userId);
+		$db->setQuery($userQuery, 0, 1);
+		$currentUser = $db->loadAssoc();
+
+		if (empty($currentUser) || !isset($currentUser['email']))
+		{
+			return;
+		}
+
+		if (strcasecmp((string) $currentUser['email'], $email) === 0)
+		{
+			return;
+		}
+
+		$duplicateQuery = $db->getQuery(true)
+			->select($db->quoteName('id'))
+			->from($db->quoteName('#__users'))
+			->where($db->quoteName('email') . ' = ' . $db->quote($email))
+			->where($db->quoteName('id') . ' != ' . (int) $userId);
+		$db->setQuery($duplicateQuery, 0, 1);
+
+		if ((int) $db->loadResult() > 0)
+		{
+			MoOAuthLogger::addLog('SSO email update skipped because the email is already used by another Joomla user', 'WARNING');
+
+			return;
+		}
+
+		$updateData = [
+			'email' => $email,
+		];
+
+		if (empty($currentUser['block']) && !empty($currentUser['activation']))
+		{
+			$updateData['activation'] = '';
+		}
+
+		self::miniOauthUpdateDb('#__users', $updateData, ['id' => (int) $userId]);
+		MoOAuthLogger::addLog('Joomla user email updated from the mapped SSO email attribute', 'INFO');
 	}
 
 	public function updateCurrentUserNameOrEmail($id, $username, $email)
@@ -819,11 +1074,17 @@ class MoOauthClientHandler
 
 	private static function getDBObject()
 	{
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getDatabase'))
+		// Application::getDatabase() is protected. The container is Joomla 4+;
+		// Factory::getDbo() remains for Joomla 3.
+		if (method_exists(Factory::class, 'getContainer'))
 		{
-			return $app->getDatabase();
+			$container = Factory::getContainer();
+			$databaseClass = 'Joomla\Database\DatabaseInterface';
+
+			if (class_exists($databaseClass) && $container->has($databaseClass))
+			{
+				return $container->get($databaseClass);
+			}
 		}
 
 		return Factory::getDbo();

@@ -31,6 +31,8 @@ use Joomla\CMS\Language\Text;
 
 class PlgSystemMiniorangeoauthInstallerScript
 {
+	private $tableColumnCache = [];
+
 	/**
 	 * This method is called after a component is installed.
 	 *
@@ -40,16 +42,7 @@ class PlgSystemMiniorangeoauthInstallerScript
 	 */
 	public function install($parent)
 	{
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getDatabase'))
-		{
-			$db = $app->getDatabase();
-		}
-		else
-		{
-			$db = Factory::getDbo();
-		}
+		$db = $this->getDatabase();
 
 		$query = $db->getQuery(true);
 		$query->update('#__extensions');
@@ -81,7 +74,164 @@ class PlgSystemMiniorangeoauthInstallerScript
 	 */
 	public function update($parent)
 	{
-		// Echo '<p>' . Text::sprintf('COM_HELLOWORLD_UPDATE_TEXT', $parent->get('manifest')->version) . '</p>';
+		$this->addColumnIfMissing(
+			'#__miniorange_oauth_config',
+			'update_email_on_sso',
+			'TINYINT(1) NOT NULL DEFAULT 0'
+		);
+	}
+
+	private function addColumnIfMissing($tableName, $columnName, $columnDefinition)
+	{
+		$tableName = (string) $tableName;
+		$columnName = (string) $columnName;
+		$columnDefinition = trim((string) $columnDefinition);
+
+		if ($tableName === '' || $columnName === '' || $columnDefinition === '')
+		{
+			return;
+		}
+
+		if (!preg_match('/^#__[A-Za-z0-9_]+$/', $tableName) || !preg_match('/^[A-Za-z0-9_]+$/', $columnName))
+		{
+			return;
+		}
+
+		if (preg_match('/[;]|--|\/\*|\*\//', $columnDefinition))
+		{
+			return;
+		}
+
+		$db = $this->getDatabase();
+		$cacheKey = strtolower($tableName);
+		$columnKey = strtolower($columnName);
+
+		if (!array_key_exists($cacheKey, $this->tableColumnCache))
+		{
+			$this->tableColumnCache[$cacheKey] = $this->loadTableColumns($db, $tableName);
+		}
+
+		if (!is_array($this->tableColumnCache[$cacheKey]) || isset($this->tableColumnCache[$cacheKey][$columnKey]))
+		{
+			return;
+		}
+
+		try
+		{
+			$query = 'ALTER TABLE ' . $db->quoteName($tableName)
+				. ' ADD COLUMN ' . $db->quoteName($columnName) . ' ' . $columnDefinition;
+			$db->setQuery($query);
+			$db->execute();
+		}
+		catch (\Exception $exception)
+		{
+			if (!$this->isDuplicateColumnException($exception))
+			{
+				throw $exception;
+			}
+		}
+
+		$this->tableColumnCache[$cacheKey][$columnKey] = true;
+	}
+
+	private function loadTableColumns($db, $tableName)
+	{
+		$columns = [];
+
+		try
+		{
+			$loaded = $db->getTableColumns($tableName);
+		}
+		catch (\Exception $exception)
+		{
+			if ($this->isMissingTableException($exception))
+			{
+				return null;
+			}
+
+			throw $exception;
+		}
+
+		if (!is_array($loaded))
+		{
+			return $columns;
+		}
+
+		foreach (array_keys($loaded) as $existingColumn)
+		{
+			$columns[strtolower((string) $existingColumn)] = true;
+		}
+
+		return $columns;
+	}
+
+	private function isDuplicateColumnException($exception)
+	{
+		$current = $exception;
+
+		while ($current instanceof \Exception)
+		{
+			$code = (string) $current->getCode();
+
+			if ($code === '1060' || $code === '42S21')
+			{
+				return true;
+			}
+
+			$message = $current->getMessage();
+
+			if (stripos($message, 'Duplicate column') !== false || stripos($message, '42S21') !== false)
+			{
+				return true;
+			}
+
+			$current = $current->getPrevious();
+		}
+
+		return false;
+	}
+
+	private function isMissingTableException($exception)
+	{
+		$current = $exception;
+
+		while ($current instanceof \Exception)
+		{
+			$code = (string) $current->getCode();
+
+			if ($code === '1146' || $code === '42S02')
+			{
+				return true;
+			}
+
+			$message = $current->getMessage();
+
+			if (stripos($message, 'Base table or view not found') !== false || stripos($message, "doesn't exist") !== false)
+			{
+				return true;
+			}
+
+			$current = $current->getPrevious();
+		}
+
+		return false;
+	}
+
+	private function getDatabase()
+	{
+		$app = Factory::getApplication();
+
+		if (method_exists($app, 'getDatabase'))
+		{
+			return $app->getDatabase();
+		}
+
+		if (method_exists(Factory::class, 'getDbo'))
+		{
+			return Factory::getDbo();
+		}
+
+		return Factory::getContainer()->get('Joomla\\Database\\DatabaseInterface');
 	}
 
 	/**

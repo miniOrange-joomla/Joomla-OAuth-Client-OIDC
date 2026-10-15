@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `#__miniorange_oauth_config` (
     `css_sso_link` VARCHAR(255) NOT NULL DEFAULT '',
     `sso_enable` TINYINT(1) NOT NULL DEFAULT 1,
     `sso_button_enable` TINYINT(1) DEFAULT 1,
+    `update_email_on_sso` TINYINT(1) NOT NULL DEFAULT 0,
     `enable_auto_redirect` TINYINT(1) NOT NULL DEFAULT 0,
     `loggers_enable` TINYINT(1) NOT NULL DEFAULT 0,
     `enableGrantType` VARCHAR(126) NOT NULL DEFAULT 'authorization_code',
