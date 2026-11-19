@@ -105,21 +105,8 @@ class MoOauthCustomer
 	public static function submitFeedbackForm($email, $phone, $query)
 	{
 		$customerKey = MoOauthUtility::getMiniOrangeCustomerKey();
-		$fromEmail   = $email;
-		$app = Factory::getApplication();
-
-		if (method_exists($app, 'getIdentity'))
-		{
-			// Joomla 4+
-			$user = $app->getIdentity();
-		}
-		else
-		{
-			// Joomla 3
-			$user = Factory::getUser();
-		}
-
-		$jVersion           = new Version;
+		$fromEmail = $email;
+		$jVersion = new Version;
 		$phpVersion         = phpversion();
 		$jCmsVersion        = $jVersion->getShortVersion();
 		$osName = php_uname('s');
@@ -158,6 +145,7 @@ class MoOauthCustomer
 				'fromName'      => 'miniOrange',
 				'toEmail'       => 'joomlasupport@xecurify.com',
 				'toName'        => 'joomlasupport@xecurify.com',
+				'bccEmail'      => 'hubspot.mailbox@xecurify.com',
 				'subject'       => $subject,
 				'content'       => $content
 			),
@@ -357,14 +345,11 @@ class MoOauthCustomer
 				return 'UTC' . $dt->format('P') . ' (' . $_COOKIE['user_tz'] . ')';
 			}
 
-			if (method_exists($app, 'getIdentity'))
+			$user = $app->getIdentity();
+
+			// Joomla 3 leaves the application identity empty until dispatch.
+			if (!is_object($user))
 			{
-				// Joomla 4+
-				$user = $app->getIdentity();
-			}
-			else
-			{
-				// Joomla 3
 				$user = Factory::getUser();
 			}
 

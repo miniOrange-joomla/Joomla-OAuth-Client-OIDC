@@ -50,6 +50,11 @@ if (class_exists('MoOAuthUtility', false))
 
 class PlgSystemMiniorangeoauth extends CMSPlugin
 {
+	/**
+	 * Whether uninstall feedback has already been handled for this request.
+	 *
+	 * @var    boolean
+	 */
 	private static $uninstallFeedbackHandled = false;
 
 	public function onAfterRender()
@@ -636,7 +641,7 @@ HTML;
 
 		foreach ($this->getUninstallReasons() as $reason)
 		{
-			$inputId = 'mo-feedback-reason-' . $index++;
+			$inputId = 'mo-feedback-reason-' . ($index++);
 			$label = $this->escape($reason['label']);
 
 			$markup .= '<div class="mo-feedback__option">'
@@ -763,16 +768,15 @@ HTML;
 			return false;
 		}
 
-		if (method_exists($app, 'getIdentity'))
-		{
-			$user = $app->getIdentity();
-		}
-		else
+		$user = $app->getIdentity();
+
+		// Joomla 3 leaves the application identity empty until dispatch, which is after onAfterInitialise.
+		if (!is_object($user))
 		{
 			$user = Factory::getUser();
 		}
 
-		if ($user === null || (int) $user->id === 0)
+		if (!is_object($user) || (int) $user->id === 0)
 		{
 			return false;
 		}
@@ -854,6 +858,16 @@ HTML;
 	{
 		try
 		{
+			$db = MoOAuthUtility::getDBObject();
+			$columns = $db->getTableColumns('#__miniorange_oauth_customer');
+			$columnNames = is_array($columns) ? array_change_key_case($columns, CASE_LOWER) : [];
+
+			// Older installs never recorded this flag, so the form still has to be shown.
+			if (!isset($columnNames['uninstall_feedback']))
+			{
+				return false;
+			}
+
 			$result = MoOAuthUtility::miniOauthFetchDb(
 				'#__miniorange_oauth_customer',
 				['id' => '1'],

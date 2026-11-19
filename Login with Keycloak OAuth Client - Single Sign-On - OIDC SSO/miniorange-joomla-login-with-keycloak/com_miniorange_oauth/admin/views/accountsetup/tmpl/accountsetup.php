@@ -138,7 +138,7 @@ if (!PluginHelper::isEnabled('system', 'miniorangeoauth'))
 {
 	?>
 <div class="mo_boot_row mo_boot_my-3">
-<div class="mo_boot_col-sm-12">
+	<div class="mo_boot_col-sm-12">
 		<div class="mo_oauth_warning_banner" role="alert">
 			<div class="mo_oauth_warning_banner_icon">
 				<i class="fa-solid fa-triangle-exclamation mo_boot_text-warning" aria-hidden="true"></i>
@@ -154,14 +154,14 @@ if (!PluginHelper::isEnabled('system', 'miniorangeoauth'))
 				</ul>
 			</div>
 		</div>
-</div>
+	</div>
 </div>
 		<?php
 }
 ?>
 
 <div id="TC_Modal" class="TC_modal">
-<div class="modal-content">
+	<div class="modal-content">
 		<div class="mo_boot_row">
 			<h5 class="mo_boot_col-sm-11 mo_boot_m-0"><?php echo Text::_('COM_MINIORANGE_OAUTH_TERMS_AND_CONDITIONS');?></h5>
 			<span class="mo_boot_col-sm-1 close" onclick="closeModel()" style="cursor: pointer;"> X </span>
@@ -196,22 +196,22 @@ if (!PluginHelper::isEnabled('system', 'miniorangeoauth'))
 				</li>
 			</ul>
 		</div>
-</div>
+	</div>
 </div>
 
 <div class="mo_boot_row mo_oauth_navbar">
-<div class="mo_boot_col-sm-12">
+	<div class="mo_boot_col-sm-12">
 		<button id="mo_TC"  onclick="show_TC_modal()" class="mo_boot_px-4 mo_boot_py-1 oauth_blue_button btn_oauth_custom_top"> <i class="fa-solid fa-file-shield"></i> T&C</button>
 		<a class="mo_boot_px-4 mo_boot_py-1 oauth_blue_button btn_oauth_custom_top" href="<?php echo Uri::base()?>index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=support">
 			<i class="fa-solid fa-envelope"></i>
 			<?php echo Text::_('COM_MINIORANGE_OAUTH_SUPPORT');?>
 		</a>
 		<a class="mo_boot_px-4 mo_boot_py-1 oauth_blue_button btn_oauth_custom_top"
-		   href="<?php echo Uri::base()?>index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=support&subtab=mo_request_demo">
+		   href="https://playground.miniorange.com/joomla.php" target="_blank" rel="noopener noreferrer">
 		   <i class="fa-solid fa-globe"></i>
 		   <?php echo Text::_('COM_MINIORANGE_OAUTH_FREE_TRIAL');?>
 		</a>
-</div>
+	</div>
 </div>
 
 
@@ -227,12 +227,8 @@ $tabsNavMarkup = buildTabsNavMarkup($tabs, $oauthActiveTab);
 
 <div class="mo_boot_container-fluid mo_oauth_tab-content">
    <div class="tab-content" id="myTabContent">
-		<div id="overview" class="tab-pane <?php echo $oauthActiveTab == 'overview' ? 'active' : ''; ?>">
-			<div class="mo_boot_row">
-				<div class="mo_boot_col-sm-12">
-					<?php echo moOAuthOverview(); ?>
-				</div>
-			</div>
+		<div id="overview" class="tab-pane <?php echo $oauthActiveTab === 'overview' ? 'active' : ''; ?>">
+			<?php moOAuthOverview(); ?>
 		</div>
 		<div id="configuration" class="tab-pane <?php echo $oauthActiveTab == 'configuration' ? 'active' : ''; ?>">
 			<div class="mo_boot_row">
@@ -289,28 +285,181 @@ $tabsNavMarkup = buildTabsNavMarkup($tabs, $oauthActiveTab);
 
 function moOAuthOverview()
 {
+	$imageBase = Uri::base() . 'components/com_miniorange_oauth/assets/images/';
+	$pluginVersion = MoOAuthUtility::getPluginVersion();
+	$pluginVersion = (is_string($pluginVersion) || is_numeric($pluginVersion)) ? (string) $pluginVersion : '';
+	$setupUrl = Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration');
+	$licenseUrl = Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=license');
+	$demoUrl = Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=support&subtab=mo_request_demo');
+	$guideUrl = 'https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-client';
+	$exploreUrl = 'https://plugins.miniorange.com/joomla';
+
+	$steps = [
+		[
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP1_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP1_DESC',
+		],
+		[
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP2_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP2_DESC',
+		],
+		[
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP3_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP3_DESC',
+		],
+		[
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP4_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_STEP4_DESC',
+		],
+	];
+
+	$providers = [
+		['app' => 'azure', 'image' => 'azure.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_AZURE'],
+		['app' => 'gapps', 'image' => 'google.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_GOOGLE'],
+		['app' => 'keycloak', 'image' => 'keycloak.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_KEYCLOAK'],
+		['app' => 'Office 365', 'image' => 'microsoft.webp', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_OFFICE365'],
+		['app' => 'okta', 'image' => 'okta.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_OKTA'],
+		['app' => 'adfs', 'image' => 'adfs.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_ADFS'],
+		['app' => 'discord', 'image' => 'discord.png', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_DISCORD'],
+		['app' => '', 'image' => '', 'label' => 'COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDER_ANY'],
+	];
+
+	$resources = [
+		[
+			'icon' => 'fa-regular fa-file-lines',
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_GUIDE_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_GUIDE_DESC',
+			'button' => 'COM_MINIORANGE_OAUTH_OVERVIEW_GUIDE_BTN',
+			'url' => $guideUrl,
+			'external' => true,
+		],
+		[
+			'icon' => 'fa-solid fa-headset',
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_TRIAL_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_TRIAL_DESC',
+			'button' => 'COM_MINIORANGE_OAUTH_OVERVIEW_TRIAL_BTN',
+			'url' => $demoUrl,
+			'external' => false,
+		],
+		[
+			'icon' => 'fa-regular fa-envelope',
+			'title' => 'COM_MINIORANGE_OAUTH_OVERVIEW_EXPLORE_TITLE',
+			'description' => 'COM_MINIORANGE_OAUTH_OVERVIEW_EXPLORE_DESC',
+			'button' => 'COM_MINIORANGE_OAUTH_OVERVIEW_EXPLORE_BTN',
+			'url' => $exploreUrl,
+			'external' => true,
+		],
+	];
 	?>
-	<div class="mo_boot_col-sm-12 mo_oauth_dark_bg">
-		<div class="mo_boot_row">
-			<div class="mo_boot_col-sm-12 mo_boot_mt-4">
-				<h3 class="element">
-					<?php echo Text::_('COM_MINIORANGE_OAUTH_NAME');?>
-				</h3>
+	<div class="mo_oauth_overview">
+		<div class="mo_oauth_overview_hero">
+			<div class="mo_oauth_overview_brand">
+				<span class="mo_oauth_overview_logo">
+					<img src="<?php echo $imageBase . 'customapp.png'; ?>" alt="">
+				</span>
+				<div class="mo_oauth_overview_brand_copy">
+					<h2 class="mo_oauth_overview_title"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_TITLE'); ?></h2>
+					<p class="mo_oauth_overview_lead"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_SUBTITLE'); ?></p>
+				</div>
 			</div>
+	<?php if ($pluginVersion !== '')
+	{
+		?>
+				<div class="mo_oauth_overview_status">
+					<small>v<?php echo htmlspecialchars($pluginVersion, ENT_QUOTES, 'UTF-8'); ?></small>
+				</div>
+		<?php
+	}
+	?>
 		</div>
-		<div class="mo_boot_row mt-2">
-			<div class="mo_boot_col-lg-7 mo_boot_col-sm-11 mo_boot_text-justify mo_boot_py-4">
-				<strong>
-					<?php echo Text::_('COM_MINIORANGE_OAUTH_DESCRIPTION');?>
-				</strong>
-				<br><br>
-				<a class="oauth_blue_button mo_boot_px-3 mo_boot_mx-1" target="_blank" href="https://plugins.miniorange.com/joomla-single-sign-on-sso-oauth-oidc"> <?php echo Text::_('COM_MINIORANGE_OAUTH_VISIT_SITE');?></a>
-				<a class="oauth_blue_button mo_boot_px-3 mo_boot_mx-1" href="<?php echo Uri::root() . 'administrator/index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=license';?>"> <?php echo Text::_('COM_MINIORANGE_OAUTH_LICENSE_PLANS');?></a>
-				<a class="oauth_blue_button mo_boot_px-3 mo_boot_mx-1" target="_blank" href="https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-client"> <?php echo Text::_('COM_MINIORANGE_OAUTH_GUIDES');?></a>
-				<a class="oauth_blue_button mo_boot_px-3 mo_boot_mx-1" target="_blank" href="https://faq.miniorange.com/kb/joomla/"> <?php echo Text::_('COM_MINIORANGE_OAUTH_FAQ');?> </a>
+
+		<div class="mo_boot_row mo_oauth_overview_columns">
+			<div class="mo_boot_col-12 mo_boot_col-lg-6">
+				<div class="mo_oauth_overview_card mo_oauth_overview_card_fill">
+					<h3 class="mo_oauth_overview_heading"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_GET_STARTED'); ?></h3>
+					<p class="mo_oauth_overview_intro"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_GET_STARTED_DESC'); ?></p>
+					<ol class="mo_oauth_overview_steps">
+	<?php foreach ($steps as $index => $step)
+	{
+		?>
+							<li class="mo_oauth_overview_step">
+								<span class="mo_oauth_overview_step_index"><?php echo $index + 1; ?></span>
+								<div class="mo_oauth_overview_step_card">
+									<strong><?php echo Text::_($step['title']); ?></strong>
+									<p><?php echo Text::_($step['description']); ?></p>
+								</div>
+							</li>
+		<?php
+	}
+	?>
+					</ol>
+					<a class="mo_oauth_overview_btn mo_oauth_overview_btn_primary" href="<?php echo $setupUrl; ?>">
+						<?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_START_SETUP'); ?>
+						<i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+					</a>
+					<p class="mo_oauth_overview_plans">
+						<?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_PLANS_TEXT'); ?>
+						<a class="mo_oauth_overview_link" href="<?php echo $licenseUrl; ?>"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_PLANS_LINK'); ?></a>
+					</p>
+				</div>
 			</div>
-			<div class="mo_boot_col-sm-5 mo_oauth_overview_img">
-				<img class="" src="<?php echo Uri::root() . 'administrator\components\com_miniorange_oauth\assets\images\joomla-oauth-oidc-banner.webp'?>" alt="Joomla Single sign on">
+			<div class="mo_boot_col-12 mo_boot_col-lg-6 mo_oauth_overview_side_col">
+				<div class="mo_oauth_overview_side">
+					<div class="mo_oauth_overview_card">
+						<h3 class="mo_oauth_overview_heading"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_PROVIDERS'); ?></h3>
+						<div class="mo_oauth_overview_providers">
+	<?php foreach ($providers as $provider)
+	{
+								$providerUrl = moOAuthBuildConfigurationAppUrl($provider['app']);
+		?>
+								<a class="mo_oauth_overview_provider" href="<?php echo $providerUrl; ?>">
+									<span class="mo_oauth_overview_provider_logo">
+		<?php if ($provider['image'] !== '')
+		{
+			?>
+											<img src="<?php echo $imageBase . $provider['image']; ?>" alt="">
+			<?php
+		}
+		else
+		{
+			?>
+											<i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+			<?php
+		}
+		?>
+									</span>
+									<span class="mo_oauth_overview_provider_label"><?php echo Text::_($provider['label']); ?></span>
+								</a>
+		<?php
+	}
+	?>
+						</div>
+					</div>
+					<div class="mo_oauth_overview_card">
+						<h3 class="mo_oauth_overview_heading"><?php echo Text::_('COM_MINIORANGE_OAUTH_OVERVIEW_RESOURCES'); ?></h3>
+						<div class="mo_oauth_overview_resources">
+	<?php foreach ($resources as $resource)
+	{
+								$externalAttributes = $resource['external'] ? ' target="_blank" rel="noopener noreferrer"' : '';
+		?>
+								<div class="mo_oauth_overview_resource">
+									<span class="mo_oauth_overview_resource_icon">
+										<i class="<?php echo $resource['icon']; ?>" aria-hidden="true"></i>
+									</span>
+									<div class="mo_oauth_overview_resource_copy">
+										<strong><?php echo Text::_($resource['title']); ?></strong>
+										<p><?php echo Text::_($resource['description']); ?></p>
+									</div>
+									<a class="mo_oauth_overview_btn mo_oauth_overview_btn_outline" href="<?php echo $resource['url']; ?>"<?php echo $externalAttributes; ?>>
+										<?php echo Text::_($resource['button']); ?>
+									</a>
+								</div>
+		<?php
+	}
+	?>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -439,6 +588,130 @@ function selectCustomApp()
 	<?php
 }
 
+function isMoOAuthAppConfigured($attribute)
+{
+	if (empty($attribute) || !is_array($attribute))
+	{
+		return false;
+	}
+
+	return !empty($attribute['client_secret'])
+		&& !empty($attribute['client_id'])
+		&& !empty($attribute['custom_app'])
+		&& !empty($attribute['redirecturi']);
+}
+
+function moOAuthGetConfiguredAppKey($attribute)
+{
+	return isset($attribute['appname']) ? (string) $attribute['appname'] : '';
+}
+
+function moOAuthHasExistingApplicationSetup($attribute)
+{
+	if (isMoOAuthAppConfigured($attribute))
+	{
+		return true;
+	}
+
+	$savedAppKey = moOAuthGetConfiguredAppKey($attribute);
+
+	if ($savedAppKey === '')
+	{
+		return false;
+	}
+
+	return !empty($attribute['redirecturi'])
+		|| !empty($attribute['client_id'])
+		|| !empty($attribute['authorize_endpoint'])
+		|| !empty($attribute['access_token_endpoint'])
+		|| !empty($attribute['user_info_endpoint']);
+}
+
+function moOAuthShouldConfirmApplicationSwitch($attribute, $requestedAppKey, $selectAnyApp)
+{
+	if (!moOAuthHasExistingApplicationSetup($attribute))
+	{
+		return false;
+	}
+
+	if ($selectAnyApp)
+	{
+		return true;
+	}
+
+	return moOAuthGetConfiguredAppKey($attribute) !== $requestedAppKey;
+}
+
+function moOAuthBuildConfigurationAppUrl($appKey)
+{
+	if ($appKey === '')
+	{
+		return Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration&mo_oauth_select_app=1');
+	}
+
+	return Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration&moAuthAddApp=' . rawurlencode($appKey));
+}
+
+function moOAuthGetApplicationLabel($appArray, $appKey)
+{
+	if ($appKey !== '' && isset($appArray[$appKey]['label']))
+	{
+		return $appArray[$appKey]['label'];
+	}
+
+	return $appKey;
+}
+
+function moOAuthRenderApplicationSwitchConfirm($appArray, $currentAppKey, $targetAppKey, $selectAnyApp)
+{
+	$currentLabel = moOAuthGetApplicationLabel($appArray, $currentAppKey);
+
+	if ($selectAnyApp)
+	{
+		$message = Text::sprintf('COM_MINIORANGE_OAUTH_SWITCH_APP_ANY_MESSAGE', $currentLabel);
+	}
+	else
+	{
+		$targetLabel = moOAuthGetApplicationLabel($appArray, $targetAppKey);
+		$message = Text::sprintf('COM_MINIORANGE_OAUTH_SWITCH_APP_MESSAGE', $currentLabel, $targetLabel);
+	}
+
+	$cancelUrl = Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration');
+	?>
+	<div class="mo_boot_col-sm-12 mo_main_oauth_section">
+		<div class="mo_oauth_switch_app_card">
+			<h3 class="mo_oauth_switch_app_title"><?php echo Text::_('COM_MINIORANGE_OAUTH_SWITCH_APP_TITLE'); ?></h3>
+			<p class="mo_oauth_switch_app_message"><?php echo $message; ?></p>
+			<div class="mo_oauth_switch_app_actions">
+				<form method="post" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.clearConfig'); ?>">
+					<?php echo HTMLHelper::_('form.token'); ?>
+	<?php
+	if ($selectAnyApp)
+	{
+		?>
+						<input type="hidden" name="mo_oauth_select_app" value="1">
+		<?php
+	}
+	elseif ($targetAppKey !== '')
+	{
+		?>
+						<input type="hidden" name="moAuthAddApp" value="<?php echo htmlspecialchars($targetAppKey, ENT_QUOTES, 'UTF-8'); ?>">
+		<?php
+	}
+	?>
+					<button type="submit" class="oauth_blue_button mo_oauth_switch_app_confirm">
+						<?php echo Text::_('COM_MINIORANGE_OAUTH_SWITCH_APP_CONFIRM'); ?>
+					</button>
+				</form>
+				<a class="mo_oauth_switch_app_cancel" href="<?php echo $cancelUrl; ?>">
+					<?php echo Text::_('COM_MINIORANGE_OAUTH_SWITCH_APP_CANCEL'); ?>
+				</a>
+			</div>
+		</div>
+	</div>
+	<?php
+}
+
 function getAppDetails()
 {
 	$db = MoOAuthUtility::getDBObject();
@@ -520,24 +793,31 @@ function configuration($oauthApp, $appLabel)
 		}
 	}
 
-	if (isset($attribute['client_id']))
+	$appScope = $oauthApp['scope'] ?? '';
+	$authorizeEndpoint = null;
+	$accessTokenEndpoint = null;
+	$userInfoEndpoint = null;
+	$attributesNames = [];
+	$useSavedConfiguration = moOAuthGetConfiguredAppKey($attribute) === $appLabel;
+
+	if ($useSavedConfiguration && isset($attribute['client_id']))
 	{
 		$moOauthApp = empty($attribute['appname']) ? $appLabel : $attribute['appname'];
 		$customApp = $attribute['custom_app'];
 		$clientId = $attribute['client_id'];
 		$clientSecret = $attribute['client_secret'];
-		$isAppConfigured = empty($clientId) || empty($clientSecret) || empty($customApp)||empty($attribute['redirecturi']) ? false : true;
+		$isAppConfigured = empty($clientId) || empty($clientSecret) || empty($customApp) || empty($attribute['redirecturi']) ? false : true;
 		$step1Check = empty($attribute['redirecturi']) ? false : true;
-		$step2Check = empty($clientId) || empty($clientSecret) || empty($customApp)||empty($attribute['redirecturi']) ? false : true;
+		$step2Check = empty($clientId) || empty($clientSecret) || empty($customApp) || empty($attribute['redirecturi']) ? false : true;
 		$appScope = empty($attribute['app_scope']) ? $oauthApp['scope'] : $attribute['app_scope'];
 		$authorizeEndpoint = empty($attribute['authorize_endpoint']) ? null : $attribute['authorize_endpoint'];
 		$accessTokenEndpoint = empty($attribute['access_token_endpoint']) ? null : $attribute['access_token_endpoint'];
 		$userInfoEndpoint = empty($attribute['user_info_endpoint']) ? null : $attribute['user_info_endpoint'];
 		$emailAttr = $attribute['email_attr'];
 		$firstNameAttr = $attribute['username_attr'];
-		$attributesNames = $attribute['test_attribute_name'] ?? "";
+		$attributesNames = $attribute['test_attribute_name'] ?? '';
 		$step3Check = empty($emailAttr) ? false : true;
-		$attributesNames = explode(",", $attributesNames);
+		$attributesNames = explode(',', $attributesNames);
 	}
 
 	$versionObj = new Version;
@@ -550,8 +830,17 @@ function configuration($oauthApp, $appLabel)
 		$redirectUrlByVersion = "api/index.php/v1/miniorangeoauth";
 	}
 
-	$redirecturi = empty($attribute['redirecturi']) ? explode('//', Uri::root())[1] . $redirectUrlByVersion : explode('//', $attribute['redirecturi'])[1];
-	$redirecturiDomain = empty($attribute['redirecturi']) ? explode('//', Uri::root())[0] : explode('//', $attribute['redirecturi'])[0];
+	if ($useSavedConfiguration && !empty($attribute['redirecturi']))
+	{
+		$redirecturi = explode('//', $attribute['redirecturi'])[1];
+		$redirecturiDomain = explode('//', $attribute['redirecturi'])[0];
+	}
+	else
+	{
+		$redirecturi = explode('//', Uri::root())[1] . $redirectUrlByVersion;
+		$redirecturiDomain = explode('//', Uri::root())[0];
+	}
+
 	$app = Factory::getApplication();
 
 	if (method_exists($app, 'getInput'))
@@ -1572,26 +1861,52 @@ function moOAuthConfiguration()
 
 	$get = $input->get->getArray();
 	$attribute = getAppDetails();
-	$isAppConfigured = empty($attribute['client_secret']) || empty($attribute['client_id']) || empty($attribute['custom_app'])|| empty($attribute['redirecturi']) ? false : true;
+	$isAppConfigured = isMoOAuthAppConfigured($attribute);
+	$savedAppKey = moOAuthGetConfiguredAppKey($attribute);
+	$selectAnyApp = !empty($get['mo_oauth_select_app']);
+	$requestedApp = isset($get['moAuthAddApp']) ? (string) $get['moAuthAddApp'] : '';
 
-	if (isset($get['moAuthAddApp']) && !empty($get['moAuthAddApp']))
+	if ($selectAnyApp)
 	{
-		configuration($appArray[$get['moAuthAddApp']], $get['moAuthAddApp']);
+		if (moOAuthShouldConfirmApplicationSwitch($attribute, '', true))
+		{
+			moOAuthRenderApplicationSwitchConfirm($appArray, $savedAppKey, '', true);
+
+			return;
+		}
+	}
+	elseif ($requestedApp !== '')
+	{
+		if (!isset($appArray[$requestedApp]))
+		{
+			$requestedApp = '';
+		}
+		else
+		{
+			if (moOAuthShouldConfirmApplicationSwitch($attribute, $requestedApp, false))
+			{
+				moOAuthRenderApplicationSwitchConfirm($appArray, $savedAppKey, $requestedApp, false);
+
+				return;
+			}
+
+			configuration($appArray[$requestedApp], $requestedApp);
+
+			return;
+		}
+	}
+
+	if ($isAppConfigured && $savedAppKey !== '' && isset($appArray[$savedAppKey]))
+	{
+		configuration($appArray[$savedAppKey], $savedAppKey);
 
 		return;
 	}
-	elseif ($isAppConfigured)
-	{
-		configuration($appArray[$attribute['appname']], $attribute['appname']);
 
-		return;
-	}
-	else
-	{
-		?>
+	?>
 
 
-			<div class="mo_boot_row mo_boot_px-5 mo_boot_mt-4 mo_boot_d-flex mo_ouath_flex-gap-3 ">
+		<div class="mo_boot_row mo_boot_px-5 mo_boot_mt-4 mo_boot_d-flex mo_ouath_flex-gap-3 ">
 				<div onclick = "changeSubMenu('#configuration' , this , '#mo_pre_configure_app')" class="mo_boot_col mo_oauth_sub_menu mo_oauth_sub_menu_active">
 					<span><?php echo Text::_('COM_MINIORANGE_OAUTH_PRE_CONFIG_APPS');?></span>
 				</div>
@@ -1621,8 +1936,7 @@ function moOAuthConfiguration()
 				</div>
 			</div>
 
-		<?php
-	}
+	<?php
 }
 
 function loginlogoutsettings()
@@ -2189,17 +2503,7 @@ function support()
 									</div>
 								</div>
 
-								<div class="mo_boot_row mo_boot_mt-2 mo_boot_my-1">
-									<div class="mo_boot_col-sm-3 offset-1">
-										<p> <strong><?php echo Text::_('COM_MINIORANGE_OAUTH_REQUEST_FOR');?><span class="mo_oauth_highlight">*</span> : </strong></p>
-									</div>
-									<div class="mo_boot_col-sm-4">
-										<label><input type="radio" name="demo" class="mx-2" value="Trial of 7 days" CHECKED><?php echo Text::_('COM_MINIORANGE_OAUTH_TRIAL');?></label>
-									</div>
-									<div class="mo_boot_col-sm-4">
-										<label><input type="radio" name="demo" class="mx-2"  value="Demo" ><?php echo Text::_('COM_MINIORANGE_OAUTH_DEMO');?></label>
-									</div>
-								</div>
+								<input type="hidden" name="demo" value="Demo" />
 								<div class="mo_boot_row mo_boot_mt-2">
 									<div class="mo_boot_col-sm-3 offset-1">
 										<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_REQUEST_TRIAL_DEMO');?><span class="mo_oauth_highlight">*</span> :</strong>
@@ -2652,28 +2956,26 @@ function moImportAndExport($moOauthApp)
 		<div class="mo_boot_col-sm-12 mo_oauth_hightlight_white_bg mo_boot_mt-3 mo_boot_p-3">
 			<div class="mo_boot_my-2 mo_oauth_export_import_config">
 				<strong><?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?></strong>
+				<span title="<?php echo Text::_('COM_MINIORANGE_AVAILABLE_IN_PAID_PLANS_ONLY'); ?>"><sup><img class="crown_img_small" src="<?php echo Uri::base();?>/components/com_miniorange_oauth/assets/images/crown.webp" alt=""></sup></span>
 			</div>
 
 			<div class="mo_boot_mb-2"><?php echo Text::_('COM_MINIORANGE_IMPORT_CONFIGURATION_TEXT'); ?></div>
 
-			<form method="post" enctype="multipart/form-data" action="<?php echo Route::_('index.php?option=com_miniorange_oauth&view=accountsetup&task=accountsetup.importConfiguration'); ?>">
-				<?php echo HTMLHelper::_('form.token'); ?>
-				<div class="mo_boot_row mo_boot_mt-3">
-					<div class="mo_boot_col-sm-4">
-						<strong><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_UPLOAD_CONFIGURATION'); ?></strong>
-					</div>
-					<div class="mo_boot_col-sm-4">
-						<input type="file" class="mo-form-control-file d-inline" name="configuration_file" accept=".json,application/json" required="required">
-					</div>
+			<div class="mo_boot_row mo_boot_mt-3">
+				<div class="mo_boot_col-sm-4">
+					<strong><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_UPLOAD_CONFIGURATION'); ?></strong>
 				</div>
+				<div class="mo_boot_col-sm-4">
+					<input type="file" class="mo-form-control-file d-inline mo_oauth_cursor" disabled>
+				</div>
+			</div>
 
-				<div class="mo_boot_my-2 mo_boot_mt-3">
-					<button type="submit" class="oauth_blue_button">
-						<span><i class="fa-solid fa-upload"></i></span>
-						<?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?>
-					</button>
-				</div>
-			</form>
+			<div class="mo_boot_my-2 mo_boot_mt-3">
+				<button type="button" class="oauth_blue_button mo_oauth_cursor" disabled>
+					<span><i class="fa-solid fa-upload"></i></span>
+					<?php echo Text::_('COM_MINIORANGE_OAUTH_IMPORT_CONFIGURATION'); ?>
+				</button>
+			</div>
 		</div>
 	</div>
 	<?php

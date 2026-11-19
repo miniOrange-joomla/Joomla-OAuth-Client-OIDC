@@ -31,6 +31,11 @@ use Joomla\CMS\Language\Text;
 
 class PlgSystemMiniorangeoauthInstallerScript
 {
+	/**
+	 * Column names already present on each table, keyed by table name.
+	 *
+	 * @var    array
+	 */
 	private $tableColumnCache = [];
 
 	/**

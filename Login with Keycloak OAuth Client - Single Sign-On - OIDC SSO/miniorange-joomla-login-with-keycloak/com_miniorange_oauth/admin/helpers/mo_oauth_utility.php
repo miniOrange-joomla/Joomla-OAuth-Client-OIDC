@@ -400,10 +400,12 @@ class MoOAuthUtility
 		return hash_equals($expected, (string) $signature);
 	}
 
-	public static function buildOAuthTestSignature($appName, $expires) {
+	public static function buildOAuthTestSignature($appName, $expires)
+	{
 		$secret = Factory::getConfig()->get('secret');
 
-		if ($secret === null || $secret === '' || $appName === '' || (int) $expires <= 0) {
+		if ($secret === null || $secret === '' || $appName === '' || (int) $expires <= 0)
+		{
 			return '';
 		}
 
@@ -412,8 +414,10 @@ class MoOAuthUtility
 		return hash_hmac('sha256', $payload, (string) $secret);
 	}
 
-	public static function verifyOAuthTestSignature($appName, $expires, $signature) {
-		if ($appName === '' || (int) $expires < time() || $signature === '') {
+	public static function verifyOAuthTestSignature($appName, $expires, $signature)
+	{
+		if ($appName === '' || (int) $expires < time() || $signature === '')
+		{
 			return false;
 		}
 
@@ -497,7 +501,8 @@ class MoOAuthUtility
 		setcookie('returnurl', '', $expired);
 	}
 
-	public static function clearOAuthFlowCookies() {
+	public static function clearOAuthFlowCookies()
+	{
 		$expired = self::getSecureCookieOptions(time() - 300);
 		setcookie('mo_oauth_state', '', $expired);
 		setcookie('mo_oauth_test', '', $expired);

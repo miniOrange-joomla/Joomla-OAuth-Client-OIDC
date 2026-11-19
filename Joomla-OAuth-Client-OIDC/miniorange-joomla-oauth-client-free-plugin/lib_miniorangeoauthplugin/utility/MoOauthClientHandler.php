@@ -115,7 +115,8 @@ class MoOauthClientHandler
 			$testExpires = isset($params['test_expires']) ? (int) $params['test_expires'] : 0;
 			$testToken = isset($params['test_token']) ? (string) $params['test_token'] : '';
 
-			if (!MoOAuthUtility::verifyOAuthTestSignature($moOauthAppName, $testExpires, $testToken)) {
+			if (!MoOAuthUtility::verifyOAuthTestSignature($moOauthAppName, $testExpires, $testToken))
+			{
 				MoOAuthLogger::addLog('Unauthorized OAuth test request', 'WARNING');
 				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 			}
@@ -138,21 +139,24 @@ class MoOauthClientHandler
 			$testExpires = isset($params['test_expires']) ? (int) $params['test_expires'] : 0;
 			$testToken = isset($params['test_token']) ? (string) $params['test_token'] : '';
 
-			if (
-				$isTestRequest
+			if ($isTestRequest
 				&& !MoOAuthUtility::verifyOAuthTestSignature($appname, $testExpires, $testToken)
-			) {
+			)
+			{
 				MoOAuthLogger::addLog('Unauthorized OAuth test redirect', 'WARNING');
 				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 			}
 
-			if ($isTestRequest) {
+			if ($isTestRequest)
+			{
 				$testCookieOptions = MoOauthUtility::getSecureCookieOptions($testExpires);
 				setcookie('mo_oauth_test', '1', $testCookieOptions);
 				setcookie('mo_oauth_test_app', $appname, $testCookieOptions);
 				setcookie('mo_oauth_test_exp', (string) $testExpires, $testCookieOptions);
 				setcookie('mo_oauth_test_token', $testToken, $testCookieOptions);
-			} else {
+			}
+			else
+			{
 				$expiredCookieOptions = MoOauthUtility::getSecureCookieOptions(time() - 300);
 				setcookie('mo_oauth_test', '', $expiredCookieOptions);
 				setcookie('mo_oauth_test_app', '', $expiredCookieOptions);
@@ -259,7 +263,8 @@ class MoOauthClientHandler
 					MoOauthUtility::getSecureCookieOptions(time() - 300)
 				);
 
-				if ($providedState === '' || (!$stateMatchesSession && !$stateMatchesCookie)) {
+				if ($providedState === '' || (!$stateMatchesSession && !$stateMatchesCookie))
+				{
 					MoOAuthLogger::addLog('OAuth state validation failed', 'WARNING');
 					exit('[MOOAUTH-003] : ' . Text::_('LIB_MINIORANGEOAUTH_NO_REQUEST_FOUND'));
 				}
@@ -268,13 +273,17 @@ class MoOauthClientHandler
 				$currentappname = '';
 				$sessionVar = $session->get('appname');
 
-				if (isset($sessionVar) && !empty($sessionVar)) {
+				if (isset($sessionVar) && !empty($sessionVar))
+				{
 					$currentappname = $session->get('appname');
-				} else {
+				}
+				else
+				{
 					$currentappname = $this->getAppNameFromState($providedState);
 				}
 
-				if (empty($currentappname)) {
+				if (empty($currentappname))
+				{
 					MoOAuthLogger::addLog('No request found for this application', 'ERROR');
 					exit('[MOOAUTH-003] : ' . Text::_('LIB_MINIORANGEOAUTH_NO_REQUEST_FOUND'));
 				}
@@ -405,7 +414,8 @@ class MoOauthClientHandler
 						exit;
 					}
 
-					$this->loginCurrentUser($checkUser, $username, $email);
+					$updateEmailOnSso = !empty($appdata['update_email_on_sso']);
+					$this->loginCurrentUser($checkUser, $username, $email, $updateEmailOnSso);
 				}
 				else
 				{
@@ -460,12 +470,14 @@ class MoOauthClientHandler
 
 		$testCookie = $input->cookie->get('mo_oauth_test');
 
-		if ((string) $testCookie === '1') {
+		if ((string) $testCookie === '1')
+		{
 			$testApp = (string) $input->cookie->get('mo_oauth_test_app', '');
 			$testExpires = (int) $input->cookie->get('mo_oauth_test_exp', 0);
 			$testToken = (string) $input->cookie->get('mo_oauth_test_token', '');
 
-			if (!MoOAuthUtility::verifyOAuthTestSignature($testApp, $testExpires, $testToken)) {
+			if (!MoOAuthUtility::verifyOAuthTestSignature($testApp, $testExpires, $testToken))
+			{
 				MoOAuthUtility::clearOAuthFlowCookies();
 				MoOAuthLogger::addLog('OAuth test authorization expired or invalid', 'WARNING');
 				throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
@@ -533,6 +545,11 @@ class MoOauthClientHandler
 			$name = $this->getnestedattribute($resourceOwner, $nameAttr);
 		}
 
+		if (is_scalar($email))
+		{
+			$email = trim((string) $email);
+		}
+
 		if (empty($email))
 		{
 			$homeLink = Uri::root();
@@ -543,7 +560,18 @@ class MoOauthClientHandler
 			$homeLink = Uri::root();
 			echo '<p align="center"><a href=' . $homeLink . ' type="button" style="color: white; background: #185b91; padding: 10px 20px;">' . Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE') . '</a><p>';
 			MoOAuthLogger::addLog('email not received', 'ERROR');
-			exit('[MOOAUTH-008] : Email attribute is not received.');
+			exit();
+		}
+		elseif (!$this->isValidEmail($email))
+		{
+			$homeLink = htmlspecialchars(Uri::root(), ENT_QUOTES, 'UTF-8');
+			$session->set('mo_reason', Text::_('LIB_MINIORANGEOAUTH_INVALID_EMAIL_ADDRESS_REASON'));
+			echo '<div style="font-family:Calibri;padding:0 3%;"><div style="color: #a94442;background-color: #f2dede;padding: 15px;margin-bottom: 20px;text-align:center;border:1px solid #E6B3B2;font-size:18pt;">' . Text::_('LIB_MINIORANGEOAUTH_ERROR') . '</div>
+					<div style="color: #a94442;font-size:14pt; margin-bottom:20px;"><p>' . Text::_('LIB_MINIORANGEOAUTH_INVALID_EMAIL_ADDRESS') . '</p>
+					<p>' . Text::_('LIB_MINIORANGEOAUTH_INVALID_EMAIL_ADDRESS_WARNING') . '</p></div></div><br>';
+			echo '<p align="center"><a href="' . $homeLink . '" type="button" style="color: white; background: #185b91; padding: 10px 20px;">' . Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE') . '</a></p>';
+			MoOAuthLogger::addLog('invalid email address received', 'ERROR');
+			exit();
 		}
 
 		$name = $this->normalizeLoginUsername($name);
@@ -557,7 +585,7 @@ class MoOauthClientHandler
 			$homeLink = Uri::root();
 			echo '<p align="center"><a href=' . $homeLink . ' type="button" style="color: white; background: #185b91; padding: 10px 20px;">' . Text::_('LIB_MINIORANGEOAUTH_BACK_TO_WEBSITE') . '</a><p>';
 			MoOAuthLogger::addLog('username not received', 'ERROR');
-			exit('[MOOAUTH-009] : Username attribute is not received.');
+			exit();
 		}
 
 		return array($email, $name);
@@ -632,7 +660,7 @@ class MoOauthClientHandler
 		}
 
 		// Find the existing Joomla account by username. $username is the value of the mapped username attribute.
-		// quote() is used instead of bind() so Joomla 3, 4, 5, and 6 all run this query.
+		// Quote() is used instead of bind() so Joomla 3, 4, 5, and 6 all run this query.
 		$db = self::getDBObject();
 		$query = $db->getQuery(true)
 			->select($db->quoteName('id'))
@@ -657,6 +685,7 @@ class MoOauthClientHandler
 		}
 
 		$loginUsername = trim((string) $username);
+
 		// Same characters core strips with the USERNAME input filter before it searches.
 		$loginUsername = preg_replace('/[\x00-\x1F\x7F<>"\'%&]/', '', $loginUsername);
 
@@ -668,7 +697,7 @@ class MoOauthClientHandler
 		return $loginUsername;
 	}
 
-	public function loginCurrentUser($checkUser, $username = '', $email = '')
+	public function loginCurrentUser($checkUser, $username = '', $email = '', $updateEmailOnSso = false)
 	{
 		$app = Factory::getApplication();
 		$lang = $app->getLanguage();
@@ -695,6 +724,23 @@ class MoOauthClientHandler
 			$this->redirectOAuthLoginFailure($failure);
 
 			return;
+		}
+
+		if ($updateEmailOnSso)
+		{
+			try
+			{
+				$updatedEmail = $this->updateMappedUserEmail((int) $checkUser->id, $email);
+
+				if ($updatedEmail !== '')
+				{
+					$user->email = $updatedEmail;
+				}
+			}
+			catch (Exception $emailUpdateException)
+			{
+				MoOAuthLogger::addLog('SSO email update failed: ' . $emailUpdateException->getMessage(), 'WARNING');
+			}
 		}
 
 		$session = Factory::getSession();
@@ -727,18 +773,6 @@ class MoOauthClientHandler
 		self::miniOauthUpdateDb('#__miniorange_oauth_customer', $data, $condition);
 
 		$user->setLastVisit();
-
-		if (!empty($appdata['update_email_on_sso']))
-		{
-			try
-			{
-				$this->updateMappedUserEmail((int) $checkUser->id, $email);
-			}
-			catch (Exception $emailUpdateException)
-			{
-				MoOAuthLogger::addLog('SSO email update failed: ' . $emailUpdateException->getMessage(), 'WARNING');
-			}
-		}
 
 		if (method_exists($app, 'getInput'))
 		{
@@ -786,6 +820,28 @@ class MoOauthClientHandler
 		}
 
 		return '';
+	}
+
+	private function isValidEmail($email)
+	{
+		if (!is_scalar($email))
+		{
+			return false;
+		}
+
+		$email = trim((string) $email);
+
+		if ($email === '' || strlen($email) > 100)
+		{
+			return false;
+		}
+
+		if (class_exists(PunycodeHelper::class))
+		{
+			$email = PunycodeHelper::emailToPunycode($email);
+		}
+
+		return MailHelper::isEmailAddress($email);
 	}
 
 	private function showFreePlanUserCreationNotice()
@@ -943,7 +999,7 @@ body {
 		{
 			MoOAuthLogger::addLog('SSO email update skipped because the mapped email is not a single value', 'WARNING');
 
-			return;
+			return '';
 		}
 
 		$email = trim((string) $email);
@@ -957,7 +1013,7 @@ body {
 		{
 			MoOAuthLogger::addLog('SSO email update skipped because the mapped email is empty or invalid', 'WARNING');
 
-			return;
+			return '';
 		}
 
 		$db = self::getDBObject();
@@ -970,12 +1026,12 @@ body {
 
 		if (empty($currentUser) || !isset($currentUser['email']))
 		{
-			return;
+			return '';
 		}
 
 		if (strcasecmp((string) $currentUser['email'], $email) === 0)
 		{
-			return;
+			return '';
 		}
 
 		$duplicateQuery = $db->getQuery(true)
@@ -989,7 +1045,7 @@ body {
 		{
 			MoOAuthLogger::addLog('SSO email update skipped because the email is already used by another Joomla user', 'WARNING');
 
-			return;
+			return '';
 		}
 
 		$updateData = [
@@ -1003,6 +1059,8 @@ body {
 
 		self::miniOauthUpdateDb('#__users', $updateData, ['id' => (int) $userId]);
 		MoOAuthLogger::addLog('Joomla user email updated from the mapped SSO email attribute', 'INFO');
+
+		return $email;
 	}
 
 	public function updateCurrentUserNameOrEmail($id, $username, $email)
@@ -1043,10 +1101,14 @@ body {
 		return $result;
 	}
 
-	private function createOAuthState($appName) {
-		try {
+	private function createOAuthState($appName)
+	{
+		try
+		{
 			$nonce = bin2hex(random_bytes(32));
-		} catch (Exception $e) {
+		}
+		catch (Exception $e)
+		{
 			$nonce = hash('sha256', uniqid((string) mt_rand(), true));
 		}
 
@@ -1055,10 +1117,12 @@ body {
 		return $encodedAppName . '.' . $nonce;
 	}
 
-	private function getAppNameFromState($state) {
+	private function getAppNameFromState($state)
+	{
 		$stateParts = explode('.', (string) $state, 2);
 
-		if (count($stateParts) !== 2 || $stateParts[0] === '' || $stateParts[1] === '') {
+		if (count($stateParts) !== 2 || $stateParts[0] === '' || $stateParts[1] === '')
+		{
 			return '';
 		}
 

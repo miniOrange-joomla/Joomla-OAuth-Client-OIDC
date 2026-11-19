@@ -25,6 +25,7 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 		'callcontactus',
 		'contactus',
 		'exportconfiguration',
+		'importconfiguration',
 		'mooauthproxyconfigreset',
 		'proxyconfig',
 		'proxyconfigreset',
@@ -46,12 +47,12 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
 		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
 
-		if (
-			!$app->isClient('administrator')
+		if (!$app->isClient('administrator')
 			|| $user === null
 			|| (int) $user->id === 0
 			|| !$user->authorise('core.manage', 'com_miniorange_oauth')
-		) {
+		)
+		{
 			throw new RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 		}
 
@@ -343,6 +344,17 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 
 	public function clearConfig()
 	{
+		$app = Factory::getApplication();
+
+		if (method_exists($app, 'getInput'))
+		{
+			$input = $app->getInput();
+		}
+		else
+		{
+			$input = $app->input;
+		}
+
 		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$fields = array(
@@ -368,7 +380,20 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 		$db->setQuery($query);
 		$db->execute();
 
-		$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_APP_CONFIGURATION_RESET'));
+		$redirectApp = $input->getString('moAuthAddApp', '');
+		$selectAnyApp = $input->getInt('mo_oauth_select_app', 0);
+		$redirect = 'index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration';
+
+		if ($redirectApp !== '')
+		{
+			$redirect .= '&moAuthAddApp=' . rawurlencode($redirectApp);
+		}
+		elseif ($selectAnyApp === 1)
+		{
+			$redirect .= '&mo_oauth_select_app=1';
+		}
+
+		$this->setRedirect($redirect, Text::_('COM_MINIORANGE_OAUTH_APP_CONFIGURATION_RESET'));
 	}
 
 	public function requestForDemoPlan()
@@ -397,7 +422,7 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 		$email          = $post['email'];
 		$plan           = $post['plan'];
 		$description    = $post['description'];
-		$demoTrial     = $post['demo'];
+		$demoTrial     = isset($post['demo']) ? $post['demo'] : 'Demo';
 		$customer       = new MoOauthCustomer;
 
 		if ($plan == "Not Sure")
@@ -579,7 +604,7 @@ class MiniorangeOauthControllerAccountsetup extends FormController
 
 		if ($clientId === '' && $clientSecret === '')
 		{
-			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTH_ENTER_CLIENT_ID_BEFORE_DOWNLOADING'), 'error');
+			$this->setRedirect('index.php?option=com_miniorange_oauth&view=accountsetup&tab-panel=overview', Text::_('COM_MINIORANGE_OAUTH_ENTER_CLIENT_ID_BEFORE_DOWNLOADING'), 'error');
 
 			return;
 		}
